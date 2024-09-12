@@ -13,7 +13,7 @@ class Session
 private:
     uint64_t id = 0;
 public:
-    uint64_t user_id;
+    uint64_t user_id = 0;
 
     QString token;
     uint64_t start_time = 0;
