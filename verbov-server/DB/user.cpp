@@ -3,6 +3,7 @@
 #include <QtSql/QSqlTableModel>
 #include <QtSql/QSqlQuery>
 #include <QCryptographicHash>
+#include <QSqlError>
 
 #include <optional>
 
@@ -20,11 +21,19 @@ bool User::run_tests(QSqlDatabase& test_db) {
     user1.last_name = "Вербов";
     user1.email = "verbov.iaiu@phystech.edu";
     user1.set_password(QString("234"));
-    CHECK(user1.create(test_db));
 
+    // Test password.
     CHECK(user1.check_password(QString("234")));
     CHECK(!user1.check_password(QString("235")));
 
+    // Test CRUD.
+
+    // Create.
+    CHECK(user1.create(test_db));
+    // Create should fail, because such row already exists (primary key and unique constraints will fail).
+    CHECK(!user1.create(test_db));
+
+    // Read.
     std::optional<User> user1_from_db;
     CHECK(fetch_by_id(test_db, user1.id, user1_from_db));
     CHECK(user1_from_db.has_value());
@@ -40,14 +49,6 @@ bool User::run_tests(QSqlDatabase& test_db) {
     CHECK(!nonexistent_user_from_db.has_value());
     CHECK(fetch_by_email(test_db, QString("hehe@haha?"), nonexistent_user_from_db))
     CHECK(!nonexistent_user_from_db.has_value());
-
-    // Test CRUD.
-
-    // Create.
-    // Create should fail, because such row already exists (primary key and unique constraints will fail).
-    CHECK(!user1.create(test_db));
-
-    // Read should work already.
 
     // Update.
     // Should be able to update.
@@ -99,7 +100,7 @@ bool User::unpack_from_query(QSqlQuery& query) {
 
     return true;
 }
-void User::pack_into_query(QSqlQuery& query, bool fill_id) {
+void User::pack_into_query(QSqlQuery& query, bool fill_id) const {
     if (fill_id) {
         // If we are creating a row, then id is not known, we should not set it.
         query.bindValue(":id", id);
@@ -124,17 +125,21 @@ bool User::check_table(QSqlDatabase& db) {
     //   https://stackoverflow.com/questions/692856/set-start-value-for-autoincrement-in-sqlite
     //   The initial value for SQLITE_SEQUENCE.seq must be null or 0. But from tests seems like ids
     //   start from 1.
+    //   https://stackoverflow.com/a/9053277
+    // We have to write NOT NULL at PRIMARY KEYS of not integer type for sqlite due to a bug.
+    //   https://stackoverflow.com/a/64778551
     query.prepare(
         "CREATE TABLE IF NOT EXISTS " + table_name + "("
-        "id INTEGER(8) PRIMARY KEY CHECK(id >= 1),"
-        "first_name VARCHAR(64) CHECK(first_name != ''),"
-        "last_name VARCHAR(64) CHECK(last_name != ''),"
-        "email VARCHAR(64) UNIQUE CHECK(email LIKE '%_@_%'),"
-        "password_hash VARCHAR(64) CHECK(LEN(password_hash) = 64)"
+        "id INTEGER                NOT NULL PRIMARY KEY AUTOINCREMENT CHECK(id >= 1),"
+        "first_name VARCHAR(64)    NOT NULL                           CHECK(first_name != ''),"
+        "last_name VARCHAR(64)     NOT NULL                           CHECK(last_name != ''),"
+        "email VARCHAR(64)         NOT NULL UNIQUE                    CHECK(email LIKE '%_@_%'),"
+        "password_hash VARCHAR(64) NOT NULL                           CHECK(LENGTH(password_hash) = 64)"
     ");");
 
     if (!query.exec()) {
         // Failed to execute the query.
+        qCritical() << query.lastError().text();
         return false;
     }
 
@@ -151,6 +156,7 @@ bool User::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<User>& found
 
     if (!query.exec()) {
         // Failed to execute the query.
+        qCritical() << query.lastError().text();
         return false;
     }
 
@@ -181,6 +187,7 @@ bool User::fetch_by_email(QSqlDatabase& db, const QStringView email, std::option
 
     if (!query.exec()) {
         // Failed to execute the query.
+        qCritical() << query.lastError().text();
         return false;
     }
 
@@ -211,6 +218,7 @@ bool User::create(QSqlDatabase& db) {
 
     if (!query.exec()) {
         // Failed to execute the query.
+        qCritical() << query.lastError().text();
         return false;
     }
 
@@ -238,6 +246,7 @@ bool User::update(QSqlDatabase& db) {
 
     if (!query.exec()) {
         // Failed to execute the query.
+        qCritical() << query.lastError().text();
         return false;
     }
 
@@ -252,6 +261,7 @@ bool User::drop(QSqlDatabase& db) {
 
     if (!query.exec()) {
         // Failed to execute the query.
+        qCritical() << query.lastError().text();
         return false;
     }
 

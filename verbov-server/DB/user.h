@@ -1,6 +1,8 @@
 #ifndef USER_H
 #define USER_H
 
+#include <cstdint>
+
 #include <QString>
 #include <QStringView>
 
@@ -16,19 +18,19 @@ public:
     QString email;
 
     QString password_hash;
-private:
+public:
+    friend class Session; // Needs table_name from here.
     static const QString table_name;
 public:
     // Public static methods.
 
     bool unpack_from_query(QSqlQuery& query);
-    void pack_into_query(QSqlQuery& query, bool fill_id = true);
+    void pack_into_query(QSqlQuery& query, bool fill_id = true) const;
 
     // Проверяет, что таблица существует. Если нет, создает.
     static bool check_table(QSqlDatabase& db);
 
-    // Не используется, если включен NDEBUG.
-    [[maybe_unused]] static bool run_tests(QSqlDatabase& test_db);
+    static bool run_tests(QSqlDatabase& test_db);
 
     static bool fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<User>& found_user);
     static bool fetch_by_email(QSqlDatabase& db, const QStringView email, std::optional<User>& found_user);
