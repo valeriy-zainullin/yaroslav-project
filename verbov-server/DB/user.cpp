@@ -19,7 +19,9 @@ bool User::run_tests(QSqlDatabase& test_db) {
     User user1;
     user1.first_name = "Ярослав";
     user1.last_name = "Вербов";
-    user1.email = "verbov.iaiu@phystech.edu";
+    user1.vk_id = "verbov.iaiu";
+    user1.reg_confirmed = false;
+    user1.reg_code = 1234;
     user1.set_password(QString("234"));
 
     // Test password.
@@ -55,7 +57,7 @@ bool User::run_tests(QSqlDatabase& test_db) {
     // Обязательно все поля меняем, чтобы протестировать update.
     user1.first_name = user1.first_name.replace("с", "c"); // Русскую "с" заменил на латинскую, подмену не заметят)
     user1.last_name = user1.last_name.replace("о", "o"); // Русскую "о" заменил на латинскую, подмену не заметят)
-    user1.email = "hehe@haha?";
+    user1.vk_id = "hehe_haha?";
     user1.set_password(QString("heheHaHa?"));
     CHECK(user1.update(test_db));
     CHECK(fetch_by_id(test_db, user1.id, user1_from_db));
@@ -63,7 +65,7 @@ bool User::run_tests(QSqlDatabase& test_db) {
 
     // Delete.
     CHECK(user1.drop(test_db));
-    CHECK(fetch_by_email(test_db, user1.email, nonexistent_user_from_db)); // ID was set to zero, so let's use email.
+    CHECK(fetch_by_vk_id(test_db, user1.vk_id, nonexistent_user_from_db)); // ID was set to zero, so let's use email.
     CHECK(!nonexistent_user_from_db.has_value());
 
     return true;
@@ -95,7 +97,16 @@ bool User::unpack_from_query(QSqlQuery& query) {
 
     first_name = query.value("first_name").toString();
     last_name = query.value("last_name").toString();
-    email = query.value("email").toString();
+    vk_id = query.value("vk_id").toString();
+    reg_confirmed = query.value("reg_confirmed").toBool();
+
+    right_variant = true;
+    reg_code = query.value("reg_code").toULongLong(&right_variant);
+    if (!right_variant) {
+        // Some programming or db error, treat as a failed query.
+        return false;
+    }
+
     password_hash = query.value("password_hash").toString();
 
     return true;
@@ -107,7 +118,9 @@ void User::pack_into_query(QSqlQuery& query, bool fill_id) const {
     }
     query.bindValue(":first_name", first_name);
     query.bindValue(":last_name", last_name);
-    query.bindValue(":email", email);
+    query.bindValue(":vk_id", vk_id);
+    query.bindValue(":reg_confirmed", reg_confirmed);
+    query.bindValue(":reg_code", reg_code);
     query.bindValue(":password_hash", password_hash);
 }
 
@@ -133,7 +146,9 @@ bool User::check_table(QSqlDatabase& db) {
         "id INTEGER                NOT NULL PRIMARY KEY AUTOINCREMENT CHECK(id >= 1),"
         "first_name VARCHAR(64)    NOT NULL                           CHECK(first_name != ''),"
         "last_name VARCHAR(64)     NOT NULL                           CHECK(last_name != ''),"
-        "email VARCHAR(64)         NOT NULL UNIQUE                    CHECK(email LIKE '%_@_%'),"
+        "vk_id VARCHAR(32)         NOT NULL UNIQUE                    CHECK(vk_id != ''),"
+        "reg_confirmed BOOL        NOT NULL,"
+        "reg_code INTEGER          NOT NULL,"
         "password_hash VARCHAR(64) NOT NULL                           CHECK(LENGTH(password_hash) = 64)"
     ");");
 
@@ -175,7 +190,7 @@ bool User::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<User>& found
 
     return true;
 }
-bool User::fetch_by_email(QSqlDatabase& db, const QStringView email, std::optional<User>& found_user) {
+bool User::fetch_by_vk_id(QSqlDatabase& db, const QStringView vk_id, std::optional<User>& found_user) {
     // Almost ctrl-c + ctrl-v from code for retrieval by id.
     // Query one row by an unique column.
 
@@ -183,7 +198,7 @@ bool User::fetch_by_email(QSqlDatabase& db, const QStringView email, std::option
     QSqlQuery query(db);
 
     query.prepare("SELECT * FROM " + table_name + " WHERE email = :email");
-    query.bindValue(":email", email.toString());
+    query.bindValue(":vk_id", vk_id.toString());
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -211,8 +226,8 @@ bool User::create(QSqlDatabase& db) {
     QSqlQuery query(db);
 
     query.prepare(
-        "INSERT INTO " + table_name + "(first_name, last_name, email, password_hash)"
-        " VALUES (:first_name, :last_name, :email, :password_hash)"
+        "INSERT INTO " + table_name + "(first_name, last_name, vk_id, reg_confirmed, reg_code, password_hash)"
+        " VALUES (:first_name, :last_name, :vk_id, :reg_confirmed, :reg_code, :password_hash)"
     );
     pack_into_query(query, false);
 
@@ -239,7 +254,7 @@ bool User::update(QSqlDatabase& db) {
 
     query.prepare(
         "UPDATE " + table_name + " " +
-        "SET first_name = :first_name, last_name = :last_name, email = :email, password_hash = :password_hash "
+        "SET first_name = :first_name, last_name = :last_name, vk_id = :vk_id, reg_confirmed = :reg_confirmed, reg_code = :reg_code, password_hash = :password_hash "
         "WHERE id = :id"
     );
     pack_into_query(query);

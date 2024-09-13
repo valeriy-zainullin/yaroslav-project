@@ -3,14 +3,6 @@
 #include <QHttpServer>
 #include <QFile>
 
-#if defined(_WIN32)
-#include <windows.h>
-#endif
-
-#if defined(__unix__)
-#include <signal.h>
-#endif
-
 #include "DB/session.h"
 #include "DB/user.h"
 
@@ -25,7 +17,8 @@ static bool check_tables(QSqlDatabase& db) {
 static bool run_tests() {
     const QString db_path = "test_db.sqlite3";
     if (QFile().exists(db_path)) {
-        // Удалим БД с прошлого раза, чтобы не ловить ошибки из-за незавершившихся операций.
+        // Удалим БД с прошлого раза, чтобы не ловить ошибки из-за незавершившихся
+        // полностью тестов.
         CHECK(QFile().remove(db_path));
     }
 
@@ -46,10 +39,6 @@ static bool run_tests() {
 bool exiting = false;
 static int run_server(QCoreApplication& app) {
     QHttpServer server;
-    server.route("/register", []() {
-        return "Hello, you are about to be registered.";
-    });
-
     server.route("/register", []() {
         return "Hello, you are about to be registered.";
     });

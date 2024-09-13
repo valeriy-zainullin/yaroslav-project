@@ -25,6 +25,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         DB/event.h DB/event.cpp
 
         DB/eventparticipant.h DB/eventparticipant.cpp
+        vk.h
+        vk.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET verbov-server APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

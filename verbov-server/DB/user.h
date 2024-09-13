@@ -15,7 +15,9 @@ private:
 public:
     QString first_name;
     QString last_name;
-    QString email;
+    QString vk_id;
+    bool reg_confirmed = false;
+    uint32_t reg_code = 0;
 
     QString password_hash;
 public:
@@ -33,7 +35,7 @@ public:
     static bool run_tests(QSqlDatabase& test_db);
 
     static bool fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<User>& found_user);
-    static bool fetch_by_email(QSqlDatabase& db, const QStringView email, std::optional<User>& found_user);
+    static bool fetch_by_vk_id(QSqlDatabase& db, const QStringView vk_id, std::optional<User>& found_user);
 public:
     // Public plain methods.
 
