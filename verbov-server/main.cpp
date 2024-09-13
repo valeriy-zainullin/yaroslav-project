@@ -1,5 +1,4 @@
-#include <iostream>
-
+#include <QCoreApplication>
 #include <QtSql/QSqlDatabase>
 #include <QHttpServer>
 #include <QFile>
@@ -45,45 +44,32 @@ static bool run_tests() {
 #undef CHECK
 
 bool exiting = false;
-static void run_server() {
-    // Register signal handlers.
-#if defined(_WIN32)
-    // Building for windows.
-    // https://stackoverflow.com/questions/7581343/how-to-catch-ctrlc-on-windows-and-linux-with-qt
-    // https://learn.microsoft.com/ru-ru/windows/console/setconsolectrlhandler
-    SetConsoleCtrlHandler([](DWORD ctrlType) {
-        if (ctrlType == CTRL_C_EVENT) {
-            exiting = true;
-        }
-        return TRUE; // Consume the signal.
-    }, FALSE);
-#elif defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
-    struct sigaction action = {};
-    action.sa_handler = [](int dummy) {
-        exiting = true;
-    };
-    sigaction(SIGINT, &action, nullptr);
-#endif
-
-    // https://www.qt.io/blog/2019/02/01/qhttpserver-routing-api
-
+static int run_server(QCoreApplication& app) {
     QHttpServer server;
     server.route("/register", []() {
         return "Hello, you are about to be registered.";
     });
-    server.listen(QHostAddress("127.0.0.1"), 8080);
 
+    server.route("/register", []() {
+        return "Hello, you are about to be registered.";
+    });
+
+    uint16_t port = server.listen(QHostAddress("127.0.0.1"), 8080);
+    if (port == 0) {
+        qInfo() << "failed to listen on port";
+        return -1;
+    }
+
+    // Maybe graceful shutdown later..
     qInfo() << "Server is up on 127.0.0.1:8080";
-    qInfo() << "Type ctrl-c to exit.";
-
-    while (!exiting);
+    return app.exec();
 }
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication app(argc, argv);
+
     qInfo() << "run_tests: " << run_tests();
 
-    run_server();
-
-    return 0;
+    return run_server(app);
 }
