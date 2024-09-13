@@ -1,10 +1,16 @@
-#include "mainwindow.h"
+#include <iostream>
 
-#include <QApplication>
-#include <QLocale>
 #include <QtSql/QSqlDatabase>
-#include <QTranslator>
+#include <QHttpServer>
 #include <QFile>
+
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
+#if defined(__unix__)
+#include <signal.h>
+#endif
 
 #include "DB/session.h"
 #include "DB/user.h"
@@ -38,26 +44,46 @@ static bool run_tests() {
 }
 #undef CHECK
 
-static bool run_server() {
-    return true;
+bool exiting = false;
+static void run_server() {
+    // Register signal handlers.
+#if defined(_WIN32)
+    // Building for windows.
+    // https://stackoverflow.com/questions/7581343/how-to-catch-ctrlc-on-windows-and-linux-with-qt
+    // https://learn.microsoft.com/ru-ru/windows/console/setconsolectrlhandler
+    SetConsoleCtrlHandler([](DWORD ctrlType) {
+        if (ctrlType == CTRL_C_EVENT) {
+            exiting = true;
+        }
+        return TRUE; // Consume the signal.
+    }, FALSE);
+#elif defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+    struct sigaction action = {};
+    action.sa_handler = [](int dummy) {
+        exiting = true;
+    };
+    sigaction(SIGINT, &action, nullptr);
+#endif
+
+    // https://www.qt.io/blog/2019/02/01/qhttpserver-routing-api
+
+    QHttpServer server;
+    server.route("/register", []() {
+        return "Hello, you are about to be registered.";
+    });
+    server.listen(QHostAddress("127.0.0.1"), 8080);
+
+    qInfo() << "Server is up on 127.0.0.1:8080";
+    qInfo() << "Type ctrl-c to exit.";
+
+    while (!exiting);
 }
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    qInfo() << "run_tests: " << run_tests();
 
-    qInfo() << "run_tests: " << run_tests() << '\n';
+    run_server();
 
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "verbov-server_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
-            break;
-        }
-    }
-    MainWindow w;
-    w.show();
-    return a.exec();
+    return 0;
 }

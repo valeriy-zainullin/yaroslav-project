@@ -103,7 +103,7 @@ bool User::unpack_from_query(QSqlQuery& query) {
 void User::pack_into_query(QSqlQuery& query, bool fill_id) const {
     if (fill_id) {
         // If we are creating a row, then id is not known, we should not set it.
-        query.bindValue(":id", id);
+        query.bindValue(":id", QVariant::fromValue(id));
     }
     query.bindValue(":first_name", first_name);
     query.bindValue(":last_name", last_name);
@@ -152,7 +152,7 @@ bool User::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<User>& found
     QSqlQuery query(db);
 
     query.prepare("SELECT * FROM " + table_name + " WHERE id = :id");
-    query.bindValue(":id", id);
+    query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -257,7 +257,7 @@ bool User::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
     query.prepare("DELETE FROM " + table_name + " WHERE id = :id");
-    query.bindValue(":id", id);
+    query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {
         // Failed to execute the query.

@@ -1,6 +1,13 @@
 #ifndef EVENTPARTICIPANT_H
 #define EVENTPARTICIPANT_H
 
+#include <cstdint>
+
+#include <QString>
+#include <QStringView>
+
+#include <QtSql/QSqlQuery>
+
 class EventParticipant
 {
 private:

@@ -101,12 +101,12 @@ bool Session::unpack_from_query(QSqlQuery& query) {
 void Session::pack_into_query(QSqlQuery& query, bool fill_id) const {
     if (fill_id) {
         // If we are creating a row, then id is not known, we should not set it.
-        query.bindValue(":id", id);
+        query.bindValue(":id", QVariant::fromValue(id));
     }
 
-    query.bindValue(":user_id", user_id);
+    query.bindValue(":user_id", QVariant::fromValue(user_id));
     query.bindValue(":token", token);
-    query.bindValue(":start_time", start_time);
+    query.bindValue(":start_time", QVariant::fromValue(start_time));
 }
 
 bool Session::check_table(QSqlDatabase& db) {
@@ -144,7 +144,7 @@ bool Session::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Session>&
     QSqlQuery query(db);
 
     query.prepare("SELECT * FROM " + table_name + " WHERE id = :id");
-    query.bindValue(":id", id);
+    query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -249,7 +249,7 @@ bool Session::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
     query.prepare("DELETE FROM " + table_name + " WHERE id = :id");
-    query.bindValue(":id", id);
+    query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {
         // Failed to execute the query.
