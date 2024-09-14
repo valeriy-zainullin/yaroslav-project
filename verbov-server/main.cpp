@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
     int error_code = 0;
     QString error_msg;
-    vk::send_message("id574927920", "Сообщение", error_code, error_msg);
+    vk::send_message("id574927920", "Сообщение", 0, error_code, error_msg);
 
     return run_server(app);
 }

@@ -85,7 +85,7 @@ static bool vkapi_returned_error(QJsonDocument& document, int& error_code, QStri
     return has_error;
 }
 
-bool vk::send_message(const QString& vk_id, const QString& content, int& error_code, QString& error_msg) {
+bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqueness_id, int& error_code, QString& error_msg) {
     // https://dev.vk.com/ru/method/users.get
     // https://dev.vk.com/ru/method/messages.send
 
@@ -120,8 +120,8 @@ bool vk::send_message(const QString& vk_id, const QString& content, int& error_c
 
     QJsonDocument send_msg_response = do_vkapi_request(
         "messages.send",
-        QVector<QString>{"user_id", "message"},
-        QVector<QString>{user_id, content}
+        QVector<QString>{"user_id", "message", "random_id"},
+        QVector<QString>{QString::number(user_id), content, QString::number(uniqueness_id)}
     );
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.
