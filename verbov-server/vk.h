@@ -4,7 +4,7 @@
 #include <QString>
 
 namespace vk {
-    int send_message(QString vk_id, QString content);
+    bool send_message(const QString& vk_id, const QString& content, int& error_code, QString& error_msg);
 }
 
 #endif // VK_H

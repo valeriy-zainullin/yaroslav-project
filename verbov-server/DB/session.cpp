@@ -20,7 +20,7 @@ bool Session::run_tests(QSqlDatabase& test_db) {
     User user1;
     user1.first_name = "Ярослав";
     user1.last_name = "Вербов";
-    user1.email = "verbov.iaiu@phystech.edu";
+    user1.vk_id = "verbov.iaiu";
     user1.set_password(QString("234"));
     CHECK(user1.create(test_db));
 

@@ -41,7 +41,7 @@ bool User::run_tests(QSqlDatabase& test_db) {
     CHECK(user1_from_db.has_value());
     CHECK(user1_from_db.value() == user1);
 
-    CHECK(fetch_by_email(test_db, QString("verbov.iaiu@phystech.edu"), user1_from_db));
+    CHECK(fetch_by_vk_id(test_db, QString("verbov.iaiu"), user1_from_db));
     CHECK(user1_from_db.has_value());
     CHECK(user1_from_db.value() == user1);
 
@@ -49,7 +49,7 @@ bool User::run_tests(QSqlDatabase& test_db) {
     std::optional<User> nonexistent_user_from_db;
     CHECK(fetch_by_id(test_db, 0, nonexistent_user_from_db))
     CHECK(!nonexistent_user_from_db.has_value());
-    CHECK(fetch_by_email(test_db, QString("hehe@haha?"), nonexistent_user_from_db))
+    CHECK(fetch_by_vk_id(test_db, QString("hehe@haha?"), nonexistent_user_from_db))
     CHECK(!nonexistent_user_from_db.has_value());
 
     // Update.

@@ -6,6 +6,8 @@
 #include "DB/session.h"
 #include "DB/user.h"
 
+#include "vk.h"
+
 #define CHECK(expr) if (!(expr)) { return false; }
 static bool check_tables(QSqlDatabase& db) {
     CHECK(User::check_table(db));
@@ -59,6 +61,10 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
 
     qInfo() << "run_tests: " << run_tests();
+
+    int error_code = 0;
+    QString error_msg;
+    vk::send_message("id574927920", "Сообщение", error_code, error_msg);
 
     return run_server(app);
 }
