@@ -9,9 +9,6 @@
 #include <QUrlQuery>
 #include <QVector>
 
-// TODO: ____ !!!!обязательно поменять на токен Ярика!!!!! ____
-// И пусть он создаст сообщество.
-
 // Group token. Should have messages permission.
 static const QString vk_group_token = "vk1.a.aUOQhDoQOBcr_FvQp77g9HhCi3PCm9LygaY1b275QKtVwXUXWAI5lMw6-YijCsj_VXwfPwmnYZKy8drof1jOf7AQM5K-mvfpOv-KG26WkCXvkMUA80asrezEtozqFi_FZUZ_KddK-NrKtJNXIlkBffgBcARP_sjn8a2L2-Gug6rqeeUeuk0oQ94f25ecztXerXp4-QxYZ5n1gqT6irtFsQ";
 
@@ -85,30 +82,24 @@ static bool vkapi_returned_error(QJsonDocument& document, int& error_code, QStri
     return has_error;
 }
 
-bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqueness_id, int& error_code, QString& error_msg) {
-    // https://dev.vk.com/ru/method/users.get
-    // https://dev.vk.com/ru/method/messages.send
-
+bool vk::get_user(const QString& vk_id, QString& first_name, QString& last_name, qint64& user_id, int& error_code, QString& error_msg) {
     QJsonDocument user_id_response = do_vkapi_request(
         "users.get",
         QVector<QString>{"user_ids"},
         QVector<QString>{vk_id}
-    );
+        );
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.
     error_msg.clear();
 
-    qInfo() << user_id_response;
-
     if (vkapi_returned_error(user_id_response, error_code, error_msg)) {
-        // TODO: delete later.
-        // qInfo() << error_code << error_msg;
         return false;
     }
 
-    qInfo() << user_id_response["response"][0]["id"];
+    first_name = user_id_response["response"][0]["first_name"].toString("");
+    last_name  = user_id_response["response"][0]["last_name"].toString("");
 
-    qint64 user_id = user_id_response["response"][0]["id"].toInteger(0);
+    user_id = user_id_response["response"][0]["id"].toInteger(0);
     if (user_id == 0) {
         // Неизвестная ошибка. ID не мог быть 0, мы его получили из-за того,
         // что значения не было или оно было не числом (или не поместилось, но
@@ -117,6 +108,12 @@ bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqu
         error_msg = "unknown error";
         return false;
     }
+}
+
+bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqueness_id, int& error_code, QString& error_msg) {
+    // https://dev.vk.com/ru/method/users.get
+    // https://dev.vk.com/ru/method/messages.send
+
 
     QJsonDocument send_msg_response = do_vkapi_request(
         "messages.send",
@@ -126,8 +123,6 @@ bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqu
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.
     error_msg.clear();
-
-    qInfo() << send_msg_response;
 
     if (vkapi_returned_error(send_msg_response, error_code, error_msg)) {
         qInfo() << error_code << error_msg;
