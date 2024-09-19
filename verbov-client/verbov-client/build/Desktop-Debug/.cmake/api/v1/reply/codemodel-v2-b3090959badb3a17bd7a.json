@@ -1,0 +1,79 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-ffe190574582d7ed726d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "verbov-client",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "verbov-client::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-verbov-client-Debug-feae4ae8b0847d5eb760.json",
+					"name" : "verbov-client",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "verbov-client_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-verbov-client_autogen-Debug-fb19adb41e2d0b92e1a6.json",
+					"name" : "verbov-client_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "verbov-client_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-verbov-client_autogen_timestamp_deps-Debug-e31c30f53a2d8ba24f28.json",
+					"name" : "verbov-client_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug",
+		"source" : "D:/Qt/StartUp/verbov-client"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

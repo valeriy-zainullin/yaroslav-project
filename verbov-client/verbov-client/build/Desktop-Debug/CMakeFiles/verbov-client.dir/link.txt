@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\verbov-client.dir/objects.a
+D:\MinGW\bin\ar.exe qc CMakeFiles\verbov-client.dir/objects.a @CMakeFiles\verbov-client.dir\objects1.rsp
+D:\MinGW\bin\g++.exe -DQT_QML_DEBUG -g -mwindows -Wl,--whole-archive CMakeFiles\verbov-client.dir/objects.a -Wl,--no-whole-archive -o verbov-client.exe -Wl,--out-implib,libverbov-client.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\verbov-client.dir\linkLibs.rsp

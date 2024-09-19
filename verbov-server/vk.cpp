@@ -10,7 +10,7 @@
 #include <QVector>
 
 // Group token. Should have messages permission.
-static const QString vk_group_token = "vk1.a.aUOQhDoQOBcr_FvQp77g9HhCi3PCm9LygaY1b275QKtVwXUXWAI5lMw6-YijCsj_VXwfPwmnYZKy8drof1jOf7AQM5K-mvfpOv-KG26WkCXvkMUA80asrezEtozqFi_FZUZ_KddK-NrKtJNXIlkBffgBcARP_sjn8a2L2-Gug6rqeeUeuk0oQ94f25ecztXerXp4-QxYZ5n1gqT6irtFsQ";
+static const QString vk_group_token = "vk1.a.VEl3FFS-HyX3Go3_OYQm1IdiOBNLLcEbY9PDlPhg32zGjJAnoKospAt-iqbeWSwfB252g5i3H6w6MXbSiDkCEqIp0DrX5NTZwVum3D-k64lzj6dUvqm-4VENwXx5xp-ukJDRim5Go-ERSJO5iwIuy0CuL38xTvuKYarhM9yqaK-9dhtdj-xDqghDBUCulTmoNV05cWFlAvf_UeGiDB7a7w";
 
 static QJsonDocument do_vkapi_request(QString method, const QVector<QString>& args, const QVector<QString>& values) {
     // https://dev.vk.com/ru/api/api-requests
