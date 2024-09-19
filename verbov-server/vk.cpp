@@ -82,11 +82,11 @@ static bool vkapi_returned_error(QJsonDocument& document, int& error_code, QStri
     return has_error;
 }
 
-bool vk::get_user(const QString& vk_id, QString& first_name, QString& last_name, qint64& user_id, int& error_code, QString& error_msg) {
+bool vk::get_user(const QString& vk_profile, QString& first_name, QString& last_name, qint64& vk_id, int& error_code, QString& error_msg) {
     QJsonDocument user_id_response = do_vkapi_request(
         "users.get",
         {"user_ids"},
-        {vk_id}
+        {vk_profile}
         );
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.
@@ -99,8 +99,8 @@ bool vk::get_user(const QString& vk_id, QString& first_name, QString& last_name,
     first_name = user_id_response["response"][0]["first_name"].toString("");
     last_name  = user_id_response["response"][0]["last_name"].toString("");
 
-    user_id = user_id_response["response"][0]["id"].toInteger(0);
-    if (user_id == 0) {
+    vk_id = user_id_response["response"][0]["id"].toInteger(0);
+    if (vk_id == 0) {
         // Неизвестная ошибка. ID не мог быть 0, мы его получили из-за того,
         // что значения не было или оно было не числом (или не поместилось, но
         // это вряд ли, если ответ корректный, все равно будем считать ошибкой).
@@ -108,25 +108,18 @@ bool vk::get_user(const QString& vk_id, QString& first_name, QString& last_name,
         error_msg = "unknown error";
         return false;
     }
+
+    return true;
 }
 
-bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqueness_id, int& error_code, QString& error_msg) {
+bool vk::send_message(qint64 vk_id, const QString& content, qint64 uniqueness_id, int& error_code, QString& error_msg) {
     // https://dev.vk.com/ru/method/users.get
     // https://dev.vk.com/ru/method/messages.send
-
-    qint64 user_id = 0;
-    QString first_name;
-    QString last_name;
-    if (!vk::get_user(vk_id, first_name, last_name, user_id, error_code, error_msg)) {
-        qInfo() << error_code << error_msg;
-        return false;
-    }
-
 
     QJsonDocument send_msg_response = do_vkapi_request(
         "messages.send",
         {"user_id", "message", "random_id"},
-        {QString::number(user_id), content, QString::number(uniqueness_id)}
+        {QString::number(vk_id), content, QString::number(uniqueness_id)}
     );
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.

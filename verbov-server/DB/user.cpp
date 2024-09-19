@@ -19,7 +19,7 @@ bool User::run_tests(QSqlDatabase& test_db) {
     User user1;
     user1.first_name = "Ярослав";
     user1.last_name = "Вербов";
-    user1.vk_id = "verbov.iaiu";
+    user1.vk_id = 2;
     user1.reg_confirmed = false;
     user1.reg_code = 1234;
     user1.set_password(QString("234"));
@@ -37,19 +37,13 @@ bool User::run_tests(QSqlDatabase& test_db) {
 
     // Read.
     std::optional<User> user1_from_db;
-    CHECK(fetch_by_id(test_db, user1.id, user1_from_db));
-    CHECK(user1_from_db.has_value());
-    CHECK(user1_from_db.value() == user1);
-
-    CHECK(fetch_by_vk_id(test_db, QString("verbov.iaiu"), user1_from_db));
+    CHECK(fetch_by_vk_id(test_db, user1.vk_id, user1_from_db));
     CHECK(user1_from_db.has_value());
     CHECK(user1_from_db.value() == user1);
 
     // Check non-existent user.
     std::optional<User> nonexistent_user_from_db;
-    CHECK(fetch_by_id(test_db, 0, nonexistent_user_from_db))
-    CHECK(!nonexistent_user_from_db.has_value());
-    CHECK(fetch_by_vk_id(test_db, QString("hehe@haha?"), nonexistent_user_from_db))
+    CHECK(fetch_by_vk_id(test_db, 10000, nonexistent_user_from_db))
     CHECK(!nonexistent_user_from_db.has_value());
 
     // Update.
@@ -57,10 +51,10 @@ bool User::run_tests(QSqlDatabase& test_db) {
     // Обязательно все поля меняем, чтобы протестировать update.
     user1.first_name = user1.first_name.replace("с", "c"); // Русскую "с" заменил на латинскую, подмену не заметят)
     user1.last_name = user1.last_name.replace("о", "o"); // Русскую "о" заменил на латинскую, подмену не заметят)
-    user1.vk_id = "hehe_haha?";
+    user1.reg_confirmed = true;
     user1.set_password(QString("heheHaHa?"));
     CHECK(user1.update(test_db));
-    CHECK(fetch_by_id(test_db, user1.id, user1_from_db));
+    CHECK(fetch_by_vk_id(test_db, user1.vk_id, user1_from_db));
     CHECK(user1_from_db.value() == user1);
 
     // Delete.
@@ -89,7 +83,7 @@ static QString hash_password(const QStringView password) {
 bool User::unpack_from_query(QSqlQuery& query) {
     // Unpack a returned user. First row is extracted.
     bool right_variant = true;
-    id = query.value("id").toULongLong(&right_variant);
+    vk_id = query.value("vk_id").toULongLong(&right_variant);
     if (!right_variant) {
         // Some programming or db error, treat as a failed query.
         return false;
@@ -97,7 +91,14 @@ bool User::unpack_from_query(QSqlQuery& query) {
 
     first_name = query.value("first_name").toString();
     last_name = query.value("last_name").toString();
-    vk_id = query.value("vk_id").toString();
+
+    right_variant = true;
+    vk_id = query.value("vk_id").toULongLong(&right_variant);
+    if (!right_variant) {
+        // Some programming or db error, treat as a failed query.
+        return false;
+    }
+
     reg_confirmed = query.value("reg_confirmed").toBool();
 
     right_variant = true;
@@ -111,11 +112,7 @@ bool User::unpack_from_query(QSqlQuery& query) {
 
     return true;
 }
-void User::pack_into_query(QSqlQuery& query, bool fill_id) const {
-    if (fill_id) {
-        // If we are creating a row, then id is not known, we should not set it.
-        query.bindValue(":id", QVariant::fromValue(id));
-    }
+void User::pack_into_query(QSqlQuery& query) const {
     query.bindValue(":first_name", first_name);
     query.bindValue(":last_name", last_name);
     query.bindValue(":vk_id", vk_id);
@@ -143,13 +140,12 @@ bool User::check_table(QSqlDatabase& db) {
     //   https://stackoverflow.com/a/64778551
     query.prepare(
         "CREATE TABLE IF NOT EXISTS " + table_name + "("
-        "id INTEGER                NOT NULL PRIMARY KEY AUTOINCREMENT CHECK(id >= 1),"
-        "first_name VARCHAR(64)    NOT NULL                           CHECK(first_name != ''),"
-        "last_name VARCHAR(64)     NOT NULL                           CHECK(last_name != ''),"
-        "vk_id VARCHAR(32)         NOT NULL UNIQUE                    CHECK(vk_id != ''),"
+        "vk_id INTEGER(8)          NOT NULL PRIMARY KEY CHECK(vk_id >= 1),"
+        "first_name VARCHAR(64)    NOT NULL             CHECK(first_name != ''),"
+        "last_name VARCHAR(64)     NOT NULL             CHECK(last_name != ''),"
         "reg_confirmed BOOL        NOT NULL,"
         "reg_code INTEGER          NOT NULL,"
-        "password_hash VARCHAR(64) NOT NULL                           CHECK(LENGTH(password_hash) = 64)"
+        "password_hash VARCHAR(64) NOT NULL             CHECK(LENGTH(password_hash) = 64)"
     ");");
 
     if (!query.exec()) {
@@ -161,36 +157,7 @@ bool User::check_table(QSqlDatabase& db) {
     return true;
 }
 
-
-bool User::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<User>& found_user) {
-    User user;
-    QSqlQuery query(db);
-
-    query.prepare("SELECT * FROM " + table_name + " WHERE id = :id");
-    query.bindValue(":id", QVariant::fromValue(id));
-
-    if (!query.exec()) {
-        // Failed to execute the query.
-        qCritical() << query.lastError().text();
-        return false;
-    }
-
-    if (!query.first()) {
-        // Haven't found anything. But the query is successful.
-        found_user.reset();
-        return true;
-    }
-
-    if (!user.unpack_from_query(query)) {
-        // Failed to unpack. Treat as a failed query.
-        return false;
-    }
-
-    found_user = std::move(user);
-
-    return true;
-}
-bool User::fetch_by_vk_id(QSqlDatabase& db, const QStringView vk_id, std::optional<User>& found_user) {
+bool User::fetch_by_vk_id(QSqlDatabase& db, qint64 vk_id, std::optional<User>& found_user) {
     // Almost ctrl-c + ctrl-v from code for retrieval by id.
     // Query one row by an unique column.
 
@@ -198,7 +165,7 @@ bool User::fetch_by_vk_id(QSqlDatabase& db, const QStringView vk_id, std::option
     QSqlQuery query(db);
 
     query.prepare("SELECT * FROM " + table_name + " WHERE vk_id = :vk_id");
-    query.bindValue(":vk_id", vk_id.toString());
+    query.bindValue(":vk_id", vk_id);
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -229,7 +196,7 @@ bool User::create(QSqlDatabase& db) {
         "INSERT INTO " + table_name + "(first_name, last_name, vk_id, reg_confirmed, reg_code, password_hash)"
         " VALUES (:first_name, :last_name, :vk_id, :reg_confirmed, :reg_code, :password_hash)"
     );
-    pack_into_query(query, false);
+    pack_into_query(query);
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -238,7 +205,7 @@ bool User::create(QSqlDatabase& db) {
     }
 
     bool right_variant = false;
-    id = query.lastInsertId().toULongLong(&right_variant);
+    vk_id = query.lastInsertId().toULongLong(&right_variant);
     if (!right_variant) {
         // The only other way is to throw an exception..
         // But then we have to create a custom exception.
@@ -255,7 +222,7 @@ bool User::update(QSqlDatabase& db) {
     query.prepare(
         "UPDATE " + table_name + " " +
         "SET first_name = :first_name, last_name = :last_name, vk_id = :vk_id, reg_confirmed = :reg_confirmed, reg_code = :reg_code, password_hash = :password_hash "
-        "WHERE id = :id"
+        "WHERE vk_id = :vk_id"
     );
     pack_into_query(query);
 
@@ -271,16 +238,14 @@ bool User::update(QSqlDatabase& db) {
 bool User::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare("DELETE FROM " + table_name + " WHERE id = :id");
-    query.bindValue(":id", QVariant::fromValue(id));
+    query.prepare("DELETE FROM " + table_name + " WHERE vk_id = :vk_id");
+    query.bindValue(":vk_id", QVariant::fromValue(vk_id));
 
     if (!query.exec()) {
         // Failed to execute the query.
         qCritical() << query.lastError().text();
         return false;
     }
-
-    id = 0; // id == 0 -- строка еще не в БД.
 
     return true;
 }

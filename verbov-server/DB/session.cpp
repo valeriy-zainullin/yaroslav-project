@@ -20,11 +20,11 @@ bool Session::run_tests(QSqlDatabase& test_db) {
     User user1;
     user1.first_name = "Ярослав";
     user1.last_name = "Вербов";
-    user1.vk_id = "verbov.iaiu";
+    user1.vk_id = 2;
     user1.set_password(QString("234"));
     CHECK(user1.create(test_db));
 
-    session1.user_id = user1.get_id();
+    session1.user_id = user1.get_vk_id();
     CHECK(session1.generate_token(test_db));
     session1.set_time_started();
     CHECK(!session1.is_expired());

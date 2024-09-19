@@ -43,7 +43,7 @@ static bool run_tests() {
 static bool create_session(QSqlDatabase& db, const User& user, std::optional<Session>& new_session) {
     Session session;
 
-    session.user_id = user.get_id();
+    session.user_id = user.get_vk_id();
 
     if (!session.generate_token(db)) {
         return false;
@@ -59,11 +59,23 @@ static bool create_session(QSqlDatabase& db, const User& user, std::optional<Ses
     return true;
 }
 
+static QString make_confirmation_link(const User& user) {
+    return "http://127.0.0.1:8080/reg_confirm?vk_id=" +
+           QString::number(user.get_vk_id()) + "&reg_code=" +
+           QString::number(user.reg_code);
+}
+
 static QString generate_password() {
     return "123"; // Something better than this!
 }
 
-bool exiting = false;
+static QString basic_html(const QString& text) {
+    return "<!DOCTYPE html><html><meta charset=\"utf-8\">"
+           "<title>Приложение \"Календарь\"></title><head></head><body>" +
+           text +
+           "</body></html>";
+}
+
 static int run_server(QCoreApplication& app) {
     const QString db_path = "db.sqlite3";
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
@@ -81,7 +93,29 @@ static int run_server(QCoreApplication& app) {
     // https://doc.qt.io/qt-6/qhttpserver.html#route
     server.route("/register", [&db](const QHttpServerRequest& request) {
         // POST как бы лучше для этого, но ладно..
-        QString vk_id = request.query().queryItemValue("vk_id");
+        QString vk_profile = request.query().queryItemValue("vk_profile");
+
+        int vk_error_code = 0;
+        QString vk_error_msg;
+        qint64 vk_id;
+        QString first_name;
+        QString last_name;
+        if (!vk::get_user(vk_profile, first_name, last_name, vk_id, vk_error_code, vk_error_msg)) {
+            // 18  Страница удалена или заблокирована.
+            // 30  Профиль является приватным
+            // 113 Неверный идентификатор пользователя.
+            if (vk_error_code == 18 || vk_error_code == 30 || vk_error_code == 113) {
+                return QHttpServerResponse(
+                    "Пользователь VK не найден.",
+                    QHttpServerResponse::StatusCode::NotFound
+                    );
+            }
+
+            return QHttpServerResponse(
+                "Ошибка при взаимодействии с VK API.",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
 
         std::optional<User> maybe_user;
         if (!User::fetch_by_vk_id(db, vk_id, maybe_user)) {
@@ -105,9 +139,9 @@ static int run_server(QCoreApplication& app) {
                 int vk_error_code = 0;
                 QString vk_error_msg;
                 if (vk::send_message(
-                        maybe_user->vk_id,
-                        "Добро пожаловать в приложение \"календарь\". Ссылка для подтверждение вашей регистрации: " +
-                            QString(""), // + QString(make_confirmation_link(user)),
+                        maybe_user->get_vk_id(),
+                        "Добро пожаловать в приложение \"календарь\". Ссылка для подтверждения вашей регистрации: "
+                            + make_confirmation_link(*maybe_user),
                         0,
                         vk_error_code,
                         vk_error_msg
@@ -126,29 +160,9 @@ static int run_server(QCoreApplication& app) {
         } else {
             QString password = generate_password();
 
-            User user;
-
-            int vk_error_code = 0;
-            QString vk_error_msg;
-            qint64 user_id; // just to feed the value somewhere
-            if (!vk::get_user(vk_id, user.first_name, user.last_name, user_id, vk_error_code, vk_error_msg)) {
-                // 18  Страница удалена или заблокирована.
-                // 30  Профиль является приватным
-                // 113 Неверный идентификатор пользователя.
-                if (vk_error_code == 18 || vk_error_code == 30 || vk_error_code == 113) {
-                    return QHttpServerResponse(
-                        "Пользователь VK не найден",
-                        QHttpServerResponse::StatusCode::NotFound
-                        );
-                }
-
-                return QHttpServerResponse(
-                    "Ошибка при взаимодействии с VK API",
-                    QHttpServerResponse::StatusCode::InternalServerError
-                    );
-            }
-
-            user.vk_id = vk_id;
+            User user(vk_id);
+            user.first_name = first_name;
+            user.last_name = last_name;
             user.set_password(password);
             // Генерируем шестизначный код подтверждения.
             user.reg_code = std::mt19937(std::random_device()())() % 1000000;
@@ -156,7 +170,31 @@ static int run_server(QCoreApplication& app) {
 
             if (!user.create(db)) {
                 return QHttpServerResponse(
-                    "Внутренняя ошибка",
+                    "Внутренняя ошибка (2)",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            if (!vk::send_message(
+                    user.get_vk_id(),
+                    "Добро пожаловать в приложение \"календарь\". Ссылка для подтверждения вашей регистрации: " +
+                        make_confirmation_link(*maybe_user),
+                    0,
+                    vk_error_code,
+                    vk_error_msg
+                )) {
+                // 901 Нельзя отправлять сообщения для пользователей без разрешения
+                if (vk_error_code == 901) {
+                    return QHttpServerResponse(
+                        "Проверьте, что разрешены сообщения от группы.",
+                        QHttpServerResponse::StatusCode::NotFound
+                        );
+                }
+
+                qInfo() << vk_error_code;
+
+                return QHttpServerResponse(
+                    "Ошибка при взаимодействии с VK API.",
                     QHttpServerResponse::StatusCode::InternalServerError
                     );
             }
@@ -167,10 +205,86 @@ static int run_server(QCoreApplication& app) {
                 );
         }
     });
+    // Возвращает сообщение для пользователя, которое он увидит в браузере.
+    server.route("/reg_confirm", [&db](const QHttpServerRequest& request) {
+        // POST как бы лучше для этого, но ладно..
+        QString vk_id_str = request.query().queryItemValue("vk_id");
+
+        bool is_integer = false;
+        qint64 vk_id = vk_id_str.toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                basic_html("Недопустимый id пользователя."),
+                QHttpServerResponse::StatusCode::NotFound
+                );
+        }
+
+        QString reg_code_str = request.query().queryItemValue("reg_code");
+
+        is_integer = false;
+        qint64 reg_code = reg_code_str.toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                basic_html("Недопустимый код подтверждения."),
+                QHttpServerResponse::StatusCode::NotFound
+                );
+        }
+
+        std::optional<User> maybe_user;
+        if (!User::fetch_by_vk_id(db, vk_id, maybe_user)) {
+            return QHttpServerResponse(
+                basic_html("Внутренняя ошибка (1)."),
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+        if (!maybe_user.has_value() || maybe_user->reg_code != reg_code || maybe_user->reg_confirmed) {
+            return QHttpServerResponse(
+                basic_html("Код подтверждения неверен."),
+                QHttpServerResponse::StatusCode::NotFound
+                );
+        }
+
+        maybe_user->reg_confirmed = true;
+
+        if (!maybe_user->update(db)) {
+            return QHttpServerResponse(
+                basic_html("Внутренняя ошибка (2)."),
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        return QHttpServerResponse(
+            basic_html("Вы подтвердили аккаунт. Теперь смело возвращайтесь в приложение."),
+            QHttpServerResponse::StatusCode::Accepted
+        );
+    });
     // Возвращает токен или сообщение об ошибке, которое нужно отобразить.
     server.route("/login", [&db](const QHttpServerRequest& request) {
         // POST как бы лучше для этого, но ладно..
-        QString vk_id = request.query().queryItemValue("vk_id");
+        QString vk_profile = request.query().queryItemValue("vk_profile");
+
+        int vk_error_code = 0;
+        QString vk_error_msg;
+        qint64 vk_id;
+        QString first_name;
+        QString last_name;
+        if (!vk::get_user(vk_profile, first_name, last_name, vk_id, vk_error_code, vk_error_msg)) {
+            // 18  Страница удалена или заблокирована.
+            // 30  Профиль является приватным
+            // 113 Неверный идентификатор пользователя.
+            if (vk_error_code == 18 || vk_error_code == 30 || vk_error_code == 113) {
+                return QHttpServerResponse(
+                    "Пользователь VK не найден.",
+                    QHttpServerResponse::StatusCode::NotFound
+                    );
+            }
+
+            return QHttpServerResponse(
+                "Ошибка при взаимодействии с VK API.",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
         QString password = request.query().queryItemValue("password");
 
         std::optional<User> maybe_user;
