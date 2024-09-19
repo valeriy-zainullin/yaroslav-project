@@ -60,7 +60,7 @@ static bool create_session(QSqlDatabase& db, const User& user, std::optional<Ses
 }
 
 static QString generate_password() {
-
+    return "";
 }
 
 bool exiting = false;
@@ -74,7 +74,7 @@ static int run_server(QCoreApplication& app) {
 
     QHttpServer server;
     // https://doc.qt.io/qt-6/qhttpserver.html#route
-    server.route("/register", [&db](QHttpServerRequest& request) {
+    server.route("/register", [&db](const QHttpServerRequest& request) {
         // POST как бы лучше для этого, но ладно..
         QString vk_id = request.query().queryItemValue("vk_id");
 
@@ -102,7 +102,8 @@ static int run_server(QCoreApplication& app) {
                 if (vk::send_message(
                         maybe_user->vk_id,
                         "Добро пожаловать в приложение \"календарь\". Ссылка для подтверждение вашей регистрации: " +
-                            make_confirmation_link(user),
+                            QString(""), // + QString(make_confirmation_link(user)),
+                        0,
                         vk_error_code,
                         vk_error_msg
                         )) {
@@ -110,6 +111,11 @@ static int run_server(QCoreApplication& app) {
                         "Ссылка для подтверждения аккаунта выслана повторно.",
                         QHttpServerResponse::StatusCode::Accepted
                         );
+                } else {
+                    return QHttpServerResponse(
+                        "Ошибка при отправке сообщения. Проверьте, что сообщения от группы разрешены.",
+                        QHttpServerResponse::StatusCode::InternalServerError
+                    );
                 }
             }
         } else {
@@ -137,7 +143,6 @@ static int run_server(QCoreApplication& app) {
                     );
             }
 
-
             user.vk_id = vk_id;
             user.set_password(password);
             // Генерируем шестизначный код подтверждения.
@@ -158,7 +163,7 @@ static int run_server(QCoreApplication& app) {
         }
     });
     // Возвращает токен или сообщение об ошибке, которое нужно отобразить.
-    server.route("/login", [&db](QHttpServerRequest& request) {
+    server.route("/login", [&db](const QHttpServerRequest& request) {
         // POST как бы лучше для этого, но ладно..
         QString vk_id = request.query().queryItemValue("vk_id");
         QString password = request.query().queryItemValue("password");
@@ -202,7 +207,7 @@ int main(int argc, char *argv[])
 
     int error_code = 0;
     QString error_msg;
-    vk::send_message("verbovyar21", QString::fromUtf8("Message"), error_code, error_msg);
+    vk::send_message("verbovyar21", QString::fromUtf8("Ты зареган!"), 0, error_code, error_msg);
 
     return run_server(app);
 }

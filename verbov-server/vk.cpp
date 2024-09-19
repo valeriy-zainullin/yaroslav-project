@@ -114,6 +114,14 @@ bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqu
     // https://dev.vk.com/ru/method/users.get
     // https://dev.vk.com/ru/method/messages.send
 
+    qint64 user_id = 0;
+    QString first_name;
+    QString last_name;
+    if (!vk::get_user(vk_id, first_name, last_name, user_id, error_code, error_msg)) {
+        qInfo() << error_code << error_msg;
+        return false;
+    }
+
 
     QJsonDocument send_msg_response = do_vkapi_request(
         "messages.send",
