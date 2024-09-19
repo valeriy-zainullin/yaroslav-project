@@ -3,6 +3,10 @@
 
 #include <QDialog>
 
+#include <optional>
+
+#include "mainwindow.h"
+
 namespace Ui {
 class LoginDialog;
 }
@@ -15,8 +19,18 @@ public:
     explicit LoginDialog(QWidget *parent = nullptr);
     ~LoginDialog();
 
+private slots:
+    void on_regBtn_clicked();
+
+    void on_loginBtn_clicked();
+
+private:
+    void onLoggedIn(QString token);
+
 private:
     Ui::LoginDialog *ui;
+
+    std::optional<MainWindow> mainWnd;
 };
 
 #endif // LOGINDIALOG_H
