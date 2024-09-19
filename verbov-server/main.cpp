@@ -60,7 +60,7 @@ static bool create_session(QSqlDatabase& db, const User& user, std::optional<Ses
 }
 
 static QString generate_password() {
-    return "";
+    return "123"; // Something better than this!
 }
 
 bool exiting = false;
@@ -72,6 +72,11 @@ static int run_server(QCoreApplication& app) {
         return -2;
     }
 
+    if (!check_tables(db)) {
+        qFatal("Failed to prepare tables");
+        return -3;
+    }
+
     QHttpServer server;
     // https://doc.qt.io/qt-6/qhttpserver.html#route
     server.route("/register", [&db](const QHttpServerRequest& request) {
@@ -81,7 +86,7 @@ static int run_server(QCoreApplication& app) {
         std::optional<User> maybe_user;
         if (!User::fetch_by_vk_id(db, vk_id, maybe_user)) {
             return QHttpServerResponse(
-                "Внутренняя ошибка",
+                "Внутренняя ошибка (1)",
                 QHttpServerResponse::StatusCode::InternalServerError
             );
         }
@@ -205,9 +210,9 @@ int main(int argc, char *argv[])
 
     qInfo() << "run_tests: " << run_tests();
 
-    int error_code = 0;
-    QString error_msg;
-    vk::send_message("verbovyar21", QString::fromUtf8("Ты зареган!"), 0, error_code, error_msg);
+    // int error_code = 0;
+    // QString error_msg;
+    // vk::send_message("verbovyar21", QString::fromUtf8("Ты зареган!"), 0, error_code, error_msg);
 
     return run_server(app);
 }

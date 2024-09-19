@@ -12,7 +12,7 @@
 // Group token. Should have messages permission.
 static const QString vk_group_token = "vk1.a.VEl3FFS-HyX3Go3_OYQm1IdiOBNLLcEbY9PDlPhg32zGjJAnoKospAt-iqbeWSwfB252g5i3H6w6MXbSiDkCEqIp0DrX5NTZwVum3D-k64lzj6dUvqm-4VENwXx5xp-ukJDRim5Go-ERSJO5iwIuy0CuL38xTvuKYarhM9yqaK-9dhtdj-xDqghDBUCulTmoNV05cWFlAvf_UeGiDB7a7w";
 
-static QJsonDocument do_vkapi_request(QString method, const QVector<QString>& args, const QVector<QString>& values) {
+static QJsonDocument do_vkapi_request(const QString& method, const QVector<QString>& args, const QVector<QString>& values) {
     // https://dev.vk.com/ru/api/api-requests
     // https://stackoverflow.com/questions/46943134/how-do-i-write-a-qt-http-get-request
 
@@ -85,8 +85,8 @@ static bool vkapi_returned_error(QJsonDocument& document, int& error_code, QStri
 bool vk::get_user(const QString& vk_id, QString& first_name, QString& last_name, qint64& user_id, int& error_code, QString& error_msg) {
     QJsonDocument user_id_response = do_vkapi_request(
         "users.get",
-        QVector<QString>{"user_ids"},
-        QVector<QString>{vk_id}
+        {"user_ids"},
+        {vk_id}
         );
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.
@@ -125,8 +125,8 @@ bool vk::send_message(const QString& vk_id, const QString& content, qint64 uniqu
 
     QJsonDocument send_msg_response = do_vkapi_request(
         "messages.send",
-        QVector<QString>{"user_id", "message", "random_id"},
-        QVector<QString>{QString::number(user_id), content, QString::number(uniqueness_id)}
+        {"user_id", "message", "random_id"},
+        {QString::number(user_id), content, QString::number(uniqueness_id)}
     );
 
     error_code = 0; // 0 is no error for us, -1 is unknown error.

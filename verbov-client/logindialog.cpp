@@ -2,6 +2,7 @@
 #include "ui_logindialog.h"
 
 #include "mainwindow.h"
+#include "api.h"
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
@@ -21,9 +22,11 @@ LoginDialog::~LoginDialog()
 void LoginDialog::on_regBtn_clicked()
 {
     QString vkId = ui->vkEdit->text();
-    QString pass = ui->passEdit->text();
+    // QString pass = ui->passEdit->text();
+    // qInfo() << vkId << " " << pass;
 
-    qInfo() << vkId << " " << pass;
+    api::Result result = api::request("register", {"vk_id"}, {vkId});
+    qInfo() << result.success << result.message;
 }
 
 void LoginDialog::onLoggedIn(QString token) {

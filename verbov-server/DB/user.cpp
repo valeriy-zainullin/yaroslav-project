@@ -197,7 +197,7 @@ bool User::fetch_by_vk_id(QSqlDatabase& db, const QStringView vk_id, std::option
     User user;
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + table_name + " WHERE email = :email");
+    query.prepare("SELECT * FROM " + table_name + " WHERE vk_id = :vk_id");
     query.bindValue(":vk_id", vk_id.toString());
 
     if (!query.exec()) {
