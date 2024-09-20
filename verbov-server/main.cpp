@@ -97,7 +97,7 @@ static int run_server(QCoreApplication& app) {
 
         int vk_error_code = 0;
         QString vk_error_msg;
-        qint64 vk_id;
+        qint64 vk_id = 0;
         QString first_name;
         QString last_name;
         if (!vk::get_user(vk_profile, first_name, last_name, vk_id, vk_error_code, vk_error_msg)) {
