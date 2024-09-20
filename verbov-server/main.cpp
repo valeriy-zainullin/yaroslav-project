@@ -212,7 +212,7 @@ static int run_server(QCoreApplication& app) {
             if (!vk::send_message(
                     user.get_vk_id(),
                     "Добро пожаловать в приложение \"календарь\". \nВаш пароль: " + password + "\nСсылка для подтверждения вашей регистрации: " +
-                        make_confirmation_link(*maybe_user),
+                        make_confirmation_link(user),
                     0,
                     vk_error_code,
                     vk_error_msg

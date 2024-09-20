@@ -52,6 +52,8 @@ api::Result api::request(const QString& method, const QVector<QString>& args, co
     QVariant status_code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
     if (status_code.isValid()) {
         result.success = status_code.toString() == "200";
+    } else {
+        result.success = false;
     }
 
     result.message = QString::fromUtf8(reply->readAll());
