@@ -113,7 +113,36 @@ bool Event::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Event>& fou
     return true;
 }
 
+bool Event::fetch_all_for_user(QSqlDatabase& db, uint64_t user_id, QVector<Event>& found_events) {
+    Event event;
+    QSqlQuery query(db);
 
+    query.prepare("SELECT * FROM " + table_name + " WHERE creator_user_id = :user_id");
+    query.bindValue(":user_id", QVariant::fromValue(user_id));
+
+    if (!query.exec()) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
+
+    found_events.clear();
+
+    if (query.first()) {
+        do {
+            Event event;
+
+            if (!event.unpack_from_query(query)) {
+                // Failed to unpack. Treat as a failed query.
+                return false;
+            }
+
+            found_events.push_back(std::move(event));
+        } while (query.next());
+    }
+
+    return true;
+}
 
 // ..., аналогично предыдущим моделям
 

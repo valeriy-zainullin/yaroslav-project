@@ -28,6 +28,7 @@ public:
     static bool run_tests(QSqlDatabase& test_db);
 
     static bool fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Event>& found_event);
+    static bool fetch_all_for_user(QSqlDatabase& db, uint64_t user_id, QVector<Event>& found_events);
 public:
     // Public plain methods.
 
@@ -47,5 +48,9 @@ public:
 public:
     Event();
 };
+
+// Serialization and deserialization.
+QDataStream& operator<<(QDataStream& out, const Event& entry);
+QDataStream& operator>>(QDataStream& in,  const Event& entry);
 
 #endif // EVENT_H

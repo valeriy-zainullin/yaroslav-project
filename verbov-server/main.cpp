@@ -7,6 +7,7 @@
 
 #include "DB/session.h"
 #include "DB/user.h"
+#include "DB/event.h"
 
 #include "vk.h"
 
@@ -339,6 +340,37 @@ static int run_server(QCoreApplication& app) {
             "Не удалось войти, проверьте vk_id и пароль",
             QHttpServerResponse::StatusCode::NotFound
         );
+    });
+    server.route("/event", [&db](const QHttpServerRequest& request) {
+        QString token = request.query().queryItemValue("token");
+
+        std::optional<Session> maybe_session;
+        if (!Session::fetch_by_token(db, token, maybe_session)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_session.has_value() || maybe_session->is_expired()) {
+            return QHttpServerResponse(
+                "Сессия истекла",
+                QHttpServerResponse::StatusCode::NetworkAuthenticationRequired
+                );
+        }
+
+        if (!request.query().hasQueryItem("event_id")) {
+            // Запрос всех доступных пользователю событий.
+            QVector<Event> events;
+            if (!Event::fetch_all_for_user(db, maybe_session->user_id, events)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (2).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+        }
+
+
     });
 
     uint16_t port = server.listen(QHostAddress("127.0.0.1"), 8080);
