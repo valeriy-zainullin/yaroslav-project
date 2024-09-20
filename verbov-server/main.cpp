@@ -66,7 +66,41 @@ static QString make_confirmation_link(const User& user) {
 }
 
 static QString generate_password() {
-    return "123"; // Something better than this!
+    struct CharSeg {
+        char start;
+        size_t length;
+    };
+    static constexpr CharSeg alphabet[] = {
+        {'a', 'z'-'a'+1},
+        {'A', 'Z'-'A'+1},
+        {'0', 10},
+    };
+    static constexpr size_t alphabet_len = ('z'-'a'+1)+('Z'-'A'+1)+10;
+    static constexpr char specials[] = {'.', ',', ';', '&', '%', '!'};
+
+    auto generator = std::mt19937(std::random_device()());
+    static constexpr size_t length = 10;
+
+    QString result;
+    for (size_t i = 0; i < length; ++i) {
+        bool is_special = generator() % 4 == 0;
+        char added_char = 0;
+        if (is_special) {
+            added_char = specials[generator() % (sizeof(specials) / sizeof(char))];
+        } else {
+            size_t index = generator() % alphabet_len;
+            for (size_t seg = 0; seg < sizeof(alphabet) / sizeof(*alphabet); ++seg) {
+                if (index >= alphabet[seg].length) {
+                    index -= alphabet[seg].length;
+                } else {
+                    added_char = alphabet[seg].start + index;
+                    break;
+                }
+            }
+        }
+        result.append(added_char);
+    }
+    return result;
 }
 
 static QString basic_html(const QString& text) {
@@ -140,7 +174,7 @@ static int run_server(QCoreApplication& app) {
                 QString vk_error_msg;
                 if (vk::send_message(
                         maybe_user->get_vk_id(),
-                        "Добро пожаловать в приложение \"календарь\". Ссылка для подтверждения вашей регистрации: "
+                        "Добро пожаловать в приложение \"календарь\".\nСсылка для подтверждения вашей регистрации: "
                             + make_confirmation_link(*maybe_user),
                         0,
                         vk_error_code,
@@ -177,7 +211,7 @@ static int run_server(QCoreApplication& app) {
 
             if (!vk::send_message(
                     user.get_vk_id(),
-                    "Добро пожаловать в приложение \"календарь\". Ссылка для подтверждения вашей регистрации: " +
+                    "Добро пожаловать в приложение \"календарь\". \nВаш пароль: " + password + "\nСсылка для подтверждения вашей регистрации: " +
                         make_confirmation_link(*maybe_user),
                     0,
                     vk_error_code,
@@ -265,7 +299,7 @@ static int run_server(QCoreApplication& app) {
 
         int vk_error_code = 0;
         QString vk_error_msg;
-        qint64 vk_id;
+        qint64 vk_id = 0;
         QString first_name;
         QString last_name;
         if (!vk::get_user(vk_profile, first_name, last_name, vk_id, vk_error_code, vk_error_msg)) {

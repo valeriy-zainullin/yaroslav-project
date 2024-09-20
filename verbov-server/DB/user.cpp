@@ -204,14 +204,6 @@ bool User::create(QSqlDatabase& db) {
         return false;
     }
 
-    bool right_variant = false;
-    vk_id = query.lastInsertId().toULongLong(&right_variant);
-    if (!right_variant) {
-        // The only other way is to throw an exception..
-        // But then we have to create a custom exception.
-        abort();
-    }
-
     return true;
 }
 
