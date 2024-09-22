@@ -324,7 +324,14 @@ static int run_server(QCoreApplication& app) {
 
         std::optional<User> maybe_user;
 
-        if (User::fetch_by_vk_id(db, vk_id, maybe_user) && maybe_user->check_password(password)) {
+        if (!User::fetch_by_vk_id(db, vk_id, maybe_user)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (maybe_user->check_password(password)) {
             User user = std::move(maybe_user.value());
             std::optional<Session> maybe_session;
 
@@ -359,7 +366,7 @@ static int run_server(QCoreApplication& app) {
                 );
         }
 
-        if (!request.query().hasQueryItem("event_id")) {
+        if (request.method() == QHttpServerRequest::Method::Get && !request.query().hasQueryItem("event_id")) {
             // Запрос всех доступных пользователю событий.
             QVector<Event> events;
             if (!Event::fetch_all_for_user(db, maybe_session->user_id, events)) {
@@ -368,9 +375,77 @@ static int run_server(QCoreApplication& app) {
                     QHttpServerResponse::StatusCode::InternalServerError
                     );
             }
+
+            QByteArray result;
+            QDataStream stream(result);
+            stream << events;
+            return QHttpServerResponse(
+                result,
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
         }
 
+        bool is_integer = false;
+        qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID события.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
+        }
 
+        if (request.method() == QHttpServerRequest::Method::Post) {
+            qint64 creator_user_id = maybe_session->user_id;
+
+            QString name = request.query().queryItemValue("name");
+            uint64_t timestamp = 0;
+            is_integer = false;
+            timestamp = request.query().queryItemValue("timestamp").toULongLong(&is_integer);
+            if (!is_integer) {
+                return QHttpServerResponse(
+                    "Недопустимый timestamp.",
+                    QHttpServerResponse::StatusCode::NotAcceptable
+                    );
+            }
+
+
+            Event event;
+            event.name = name;
+            event.creator_user_id = creator_user_id;
+            event.timestamp = timestamp;
+
+            if (!event.create(db)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (3).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            return QHttpServerResponse("", QHttpServerResponse::StatusCode::Ok);
+        }
+
+        std::optional<Event> maybe_event;
+        if (!Event::fetch_by_id(db, event_id, maybe_event)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (3).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_event.has_value() || maybe_event->creator_user_id != maybe_session->user_id) {
+            return QHttpServerResponse(
+                "Событие не найдено.",
+                QHttpServerResponse::StatusCode::InternalServerError
+            );
+        }
+
+        QByteArray result;
+        QDataStream stream(result);
+        stream << *maybe_event;
+        return QHttpServerResponse(
+            result,
+            QHttpServerResponse::StatusCode::InternalServerError
+            );
     });
 
     uint16_t port = server.listen(QHostAddress("127.0.0.1"), 8080);

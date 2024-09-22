@@ -3,6 +3,7 @@
 #include <QtSql/QSqlTableModel>
 #include <QtSql/QSqlQuery>
 #include <QCryptographicHash>
+#include <QDataStream>
 #include <QDateTime>
 #include <QSqlError>
 
@@ -147,3 +148,21 @@ bool Event::fetch_all_for_user(QSqlDatabase& db, uint64_t user_id, QVector<Event
 // ..., аналогично предыдущим моделям
 
 Event::Event() {}
+
+// Хотим уметь посылать такие объекты клиенту.
+QDataStream& operator<<(QDataStream& out, const Event& entry) {
+    out << entry.id;
+    out << entry.name;
+    out << entry.creator_user_id;
+    out << entry.timestamp;
+    return out;
+}
+
+QDataStream& operator>>(QDataStream& in, Event& entry) {
+    in >> entry.id;
+    in >> entry.name;
+    in >> entry.creator_user_id;
+    in >> entry.timestamp;
+    return in;
+}
+

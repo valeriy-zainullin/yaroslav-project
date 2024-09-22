@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include <QDataStream>
 #include <QString>
 #include <QStringView>
 
@@ -44,6 +45,10 @@ public:
     bool drop(QSqlDatabase& db);
 
     bool operator==(const Event& other) const = default;
+
+    friend QDataStream& operator<<(QDataStream& out, const Event& entry);
+    friend QDataStream& operator>>(QDataStream& in,  Event& entry);
+
 // ...
 public:
     Event();
@@ -51,6 +56,6 @@ public:
 
 // Serialization and deserialization.
 QDataStream& operator<<(QDataStream& out, const Event& entry);
-QDataStream& operator>>(QDataStream& in,  const Event& entry);
+QDataStream& operator>>(QDataStream& in,  Event& entry);
 
 #endif // EVENT_H
