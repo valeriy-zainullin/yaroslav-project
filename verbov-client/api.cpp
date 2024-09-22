@@ -13,7 +13,7 @@
 static const QString protocol = "http";
 static const QString host = "localhost:8080";
 
-api::Result api::request(const QString& method, const QVector<QString>& args, const QVector<QString>& values, const QString& token) {
+api::Result api::request(const QString& method, const QVector<QString>& args, const QVector<QString>& values, const QString& token, const HttpMethod& httpMethod) {
     // Не выделяем на стеке, т.к. объект может быть большой.
     // Выделяем на куче, даем владеть умному указателю, который сам освободит.
     QScopedPointer<QNetworkAccessManager> netmanager(new QNetworkAccessManager());
@@ -38,7 +38,17 @@ api::Result api::request(const QString& method, const QVector<QString>& args, co
 
     // Родителем этого объекта должен быть QNetworkManager, по идее, потому
     // с ним освободиться. Не мы выделяли, не мы освобождаем.
-    QNetworkReply* reply = netmanager->get(request);
+    QNetworkReply* reply = [&]() {
+        switch (httpMethod) {
+        case HttpMethod::Get:  return netmanager->get(request);
+        case HttpMethod::Post: {
+            request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+            return netmanager->post(request, QByteArray());
+        }
+        }
+        return netmanager->get(request);
+    }();
+
 
     // Ничего по сути не хранит, просто QObject с методами, которые ждут
     // события -- завершения запроса в интернет.
@@ -56,7 +66,7 @@ api::Result api::request(const QString& method, const QVector<QString>& args, co
         result.success = false;
     }
 
-    result.message = QString::fromUtf8(reply->readAll());
+    result.content = reply->readAll();
 
     return result;
 }

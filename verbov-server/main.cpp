@@ -15,6 +15,7 @@
 static bool check_tables(QSqlDatabase& db) {
     CHECK(User::check_table(db));
     CHECK(Session::check_table(db));
+    CHECK(Event::check_table(db));
 
     return true;
 }
@@ -331,7 +332,9 @@ static int run_server(QCoreApplication& app) {
                 );
         }
 
-        if (maybe_user->check_password(password)) {
+        qInfo() << "password" << password;
+
+        if (maybe_user->reg_confirmed && maybe_user->check_password(password)) {
             User user = std::move(maybe_user.value());
             std::optional<Session> maybe_session;
 
@@ -377,20 +380,11 @@ static int run_server(QCoreApplication& app) {
             }
 
             QByteArray result;
-            QDataStream stream(result);
+            QDataStream stream(&result, QDataStream::OpenModeFlag::ReadWrite);
             stream << events;
             return QHttpServerResponse(
                 result,
-                QHttpServerResponse::StatusCode::InternalServerError
-                );
-        }
-
-        bool is_integer = false;
-        qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
-        if (!is_integer) {
-            return QHttpServerResponse(
-                "Недопустимый ID события.",
-                QHttpServerResponse::StatusCode::NotAcceptable
+                QHttpServerResponse::StatusCode::Ok
                 );
         }
 
@@ -399,7 +393,7 @@ static int run_server(QCoreApplication& app) {
 
             QString name = request.query().queryItemValue("name");
             uint64_t timestamp = 0;
-            is_integer = false;
+            bool is_integer = false;
             timestamp = request.query().queryItemValue("timestamp").toULongLong(&is_integer);
             if (!is_integer) {
                 return QHttpServerResponse(
@@ -421,7 +415,21 @@ static int run_server(QCoreApplication& app) {
                     );
             }
 
-            return QHttpServerResponse("", QHttpServerResponse::StatusCode::Ok);
+            QByteArray result;
+            {
+                QDataStream stream(&result, QDataStream::OpenModeFlag::WriteOnly);
+                stream << event;
+            }
+            return QHttpServerResponse(result, QHttpServerResponse::StatusCode::Ok);
+        }
+
+        bool is_integer = false;
+        qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID события.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
         }
 
         std::optional<Event> maybe_event;
@@ -439,13 +447,63 @@ static int run_server(QCoreApplication& app) {
             );
         }
 
-        QByteArray result;
-        QDataStream stream(result);
-        stream << *maybe_event;
-        return QHttpServerResponse(
-            result,
-            QHttpServerResponse::StatusCode::InternalServerError
+        switch (request.method()) {
+        case QHttpServerRequest::Method::Get: {
+            QByteArray result;
+            QDataStream stream(result);
+            stream << *maybe_event;
+            return QHttpServerResponse(
+                result,
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        case QHttpServerRequest::Method::Patch: {
+            if (request.query().hasQueryItem("name")) {
+                maybe_event->name = request.query().queryItemValue("name");
+            }
+            if (request.query().hasQueryItem("timestamp")) {
+                maybe_event->timestamp = request.query().queryItemValue("timestamp").toULongLong(&is_integer);
+                if (!is_integer) {
+                    return QHttpServerResponse(
+                        "Недопустимый timestamp.",
+                        QHttpServerResponse::StatusCode::NotAcceptable
+                        );
+                }
+            }
+            if (!maybe_event->update(db)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (4).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            return QHttpServerResponse("", QHttpServerResponse::StatusCode::Ok);
+        }
+
+        case QHttpServerRequest::Method::Delete: {
+            if (!maybe_event->drop(db)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (5).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            return QHttpServerResponse(
+                "",
+                QHttpServerResponse::StatusCode::Ok
+                );
+        }
+
+        default: {
+            return QHttpServerResponse(
+                "Method is not supported",
+                QHttpServerResponse::StatusCode::MethodNotAllowed
             );
+        }
+
+        }
+
     });
 
     uint16_t port = server.listen(QHostAddress("127.0.0.1"), 8080);

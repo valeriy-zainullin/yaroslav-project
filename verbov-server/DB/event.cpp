@@ -70,10 +70,10 @@ bool Event::check_table(QSqlDatabase& db) {
     query.prepare(
         "CREATE TABLE IF NOT EXISTS " + table_name + "("
         "id INTEGER               NOT NULL PRIMARY KEY AUTOINCREMENT CHECK(id >= 1),"
-        "name VARCHAR(64)         NOT NULL                           CHECK(LENGTH(name) = 64),"
+        "name VARCHAR(64)         NOT NULL                           CHECK(name != ''),"
         "creator_user_id INTEGER  NOT NULL                           CHECK(creator_user_id >= 1),"
         "timestamp INTEGER(8)     NOT NULL                           CHECK(timestamp >= 0),"
-        "FOREIGN KEY (creator_user_id) REFERENCES " + User::table_name + "(id) ON DELETE RESTRICT"
+        "FOREIGN KEY (creator_user_id) REFERENCES " + User::table_name + "(vk_id) ON DELETE RESTRICT"
     ");");
 
     if (!query.exec()) {
@@ -141,6 +141,72 @@ bool Event::fetch_all_for_user(QSqlDatabase& db, uint64_t user_id, QVector<Event
             found_events.push_back(std::move(event));
         } while (query.next());
     }
+
+    return true;
+}
+
+bool Event::create(QSqlDatabase& db) {
+    QSqlQuery query(db);
+
+    query.prepare(
+        "INSERT INTO " + table_name + "(id, name, creator_user_id, timestamp)"
+                                      " VALUES (NULL, :name, :creator_user_id, :timestamp)"
+        );
+    pack_into_query(query);
+
+    if (!query.exec()) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
+
+    bool right_variant = false;
+    id = query.lastInsertId().toULongLong(&right_variant);
+    if (!right_variant) {
+        // The only other way is to throw an exception..
+        // But then we have to create a custom exception.
+        abort();
+    }
+
+    return true;
+}
+
+bool Event::update(QSqlDatabase& db) {
+    QSqlQuery query(db);
+
+    // По-хорошему, надо запоминать, какие поля обновлялись и их
+    //   только обновлять. Чтобы над разными полями можно было
+    //   работать параллельно. Или, например, добавлять участников
+    //   события параллельно, т.к. это вставка в базу данных участников.
+    query.prepare(
+        "UPDATE " + table_name + " " +
+        "SET name = :name, creator_user_id = :creator_user_id, timestamp = :timestamp"
+        "WHERE id = :id"
+        );
+    pack_into_query(query);
+
+    if (!query.exec()) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
+
+bool Event::drop(QSqlDatabase& db) {
+    QSqlQuery query(db);
+
+    query.prepare("DELETE FROM " + table_name + " WHERE vk_id = :vk_id");
+    query.bindValue(":id", QVariant::fromValue(id));
+
+    if (!query.exec()) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
+
+    id = 0;
 
     return true;
 }

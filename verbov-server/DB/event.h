@@ -12,11 +12,11 @@
 class Event
 {
 private:
-    uint64_t id = 0;
+    quint64 id = 0;
 public:
     QString name;
-    uint64_t creator_user_id = 0;
-    uint64_t timestamp; // UTC+0 unix time when the event will happen
+    quint64 creator_user_id = 0;
+    quint64 timestamp; // UTC+0 unix time when the event will happen
 private:
     static const QString table_name;
 public:

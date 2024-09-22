@@ -202,7 +202,7 @@ bool User::create(QSqlDatabase& db) {
         // Failed to execute the query.
         qCritical() << query.lastError().text();
         return false;
-    }
+    }    
 
     return true;
 }

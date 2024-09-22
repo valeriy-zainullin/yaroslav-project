@@ -19,7 +19,7 @@ public:
     uint64_t start_time = 0;
 private:
     static const QString table_name;
-    static const uint64_t mav_duration_sec = 5 * 24 * 60 * 60;
+    static const uint64_t max_duration_sec = 5 * 24 * 60 * 60;
 public:
     // Public static methods.
 

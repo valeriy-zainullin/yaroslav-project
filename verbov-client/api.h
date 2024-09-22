@@ -6,10 +6,15 @@
 namespace api {
     struct Result {
         bool success = false;
-        QString message;
+        QByteArray content;
     };
 
-    Result request(const QString& method, const QVector<QString>& args, const QVector<QString>& values, const QString& token = "");
+    enum class HttpMethod {
+        Get = 0,
+        Post = 1,
+    };
+
+    Result request(const QString& method, const QVector<QString>& args, const QVector<QString>& values, const QString& token = "", const HttpMethod& httpMethod = HttpMethod::Get);
 }
 
 #endif // API_H

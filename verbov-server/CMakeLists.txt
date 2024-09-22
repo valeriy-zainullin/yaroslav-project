@@ -17,14 +17,15 @@ set(PROJECT_SOURCES
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(verbov-server
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
+    qt_add_library(libentities
         DB/user.h DB/user.cpp
         DB/session.h DB/session.cpp
         DB/event.h DB/event.cpp
-
         DB/eventparticipant.h DB/eventparticipant.cpp
+    )
+    qt_add_executable(verbov-server
+        MANUAL_FINALIZATION
+        ${PROJECT_SOURCES}
         vk.h
         vk.cpp
     )
@@ -47,7 +48,10 @@ else()
     endif()
 endif()
 
-target_link_libraries(verbov-server PRIVATE Qt${QT_VERSION_MAJOR}::Sql Qt${QT_VERSION_MAJOR}::HttpServer)
+target_link_libraries(libentities PRIVATE Qt${QT_VERSION_MAJOR}::Sql)
+target_link_libraries(verbov-server PRIVATE Qt${QT_VERSION_MAJOR}::Sql Qt${QT_VERSION_MAJOR}::HttpServer libentities)
+
+target_include_directories(libentities INTERFACE ${CMAKE_CURRENT_LIST_DIR})
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

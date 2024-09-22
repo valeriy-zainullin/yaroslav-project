@@ -14,6 +14,8 @@ LoginDialog::LoginDialog(QWidget *parent)
 
     // Prevent resizing.
     setFixedSize(width(), height());
+
+    onLoggedIn("478d560b326501d4e07248e95ee5c5037fd4ccc526aafbc793dd20a7319e88f1");
 }
 
 LoginDialog::~LoginDialog()
@@ -29,7 +31,7 @@ void LoginDialog::on_regBtn_clicked()
 
     api::Result result = api::request("register", {"vk_profile"}, {vkProfile});
 
-    QToolTip::showText(QCursor::pos(), result.message);
+    QToolTip::showText(QCursor::pos(), result.content);
 }
 
 void LoginDialog::onLoggedIn(QString token) {
@@ -48,9 +50,9 @@ void LoginDialog::on_loginBtn_clicked()
     api::Result result = api::request("login", {"vk_profile", "password"}, {vkProfile, pass});
 
     if (result.success) {
-        onLoggedIn(result.message);
+        onLoggedIn(result.content);
     } else {
-        QToolTip::showText(QCursor::pos(), result.message);
+        QToolTip::showText(QCursor::pos(), result.content);
     }
 }
 

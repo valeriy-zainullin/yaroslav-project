@@ -127,7 +127,7 @@ bool Session::check_table(QSqlDatabase& db) {
         "user_id INTEGER           NOT NULL                           CHECK(user_id >= 1),"
         "token VARCHAR(64)         NOT NULL UNIQUE                    CHECK(LENGTH(token) = 64),"
         "start_time INTEGER(8)     NOT NULL                           CHECK(start_time >= 0),"
-        "FOREIGN KEY (user_id) REFERENCES " + User::table_name + "(id) ON DELETE RESTRICT"
+        "FOREIGN KEY (user_id) REFERENCES " + User::table_name + "(vk_id) ON DELETE RESTRICT"
     ");");
 
     if (!query.exec()) {
@@ -301,12 +301,12 @@ bool Session::generate_token(QSqlDatabase& db) {
 
 void Session::set_time_started() {
     // https://stackoverflow.com/a/4460647
-    //   QDateTime::currentMSecsSinceEpoch() returns milliseconds.
-    start_time = QDateTime::currentMSecsSinceEpoch();
+    // There is also QDateTime::currentSecsSinceEpoch().
+    start_time = QDateTime::currentSecsSinceEpoch();
 }
 
 bool Session::is_expired() {
-    return start_time > QDateTime::currentMSecsSinceEpoch() + mav_duration_sec * 1000;
+    return start_time > QDateTime::currentSecsSinceEpoch() + max_duration_sec;
 }
 
 
