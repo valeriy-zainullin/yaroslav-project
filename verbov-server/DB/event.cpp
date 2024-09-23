@@ -180,7 +180,7 @@ bool Event::update(QSqlDatabase& db) {
     //   события параллельно, т.к. это вставка в базу данных участников.
     query.prepare(
         "UPDATE " + table_name + " " +
-        "SET name = :name, creator_user_id = :creator_user_id, timestamp = :timestamp"
+        "SET name = :name, creator_user_id = :creator_user_id, timestamp = :timestamp "
         "WHERE id = :id"
         );
     pack_into_query(query);
@@ -197,7 +197,7 @@ bool Event::update(QSqlDatabase& db) {
 bool Event::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare("DELETE FROM " + table_name + " WHERE vk_id = :vk_id");
+    query.prepare("DELETE FROM " + table_name + " WHERE id = :id");
     query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {

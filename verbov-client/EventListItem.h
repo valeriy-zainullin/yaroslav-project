@@ -11,7 +11,7 @@ public:
         : QListWidgetItem(event.name, parent), event_id(event.get_id()) {}
 
     virtual ~EventListItem() = default;
-private:
+public:
     quint64 event_id;
 
 };

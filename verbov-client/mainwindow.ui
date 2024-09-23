@@ -47,6 +47,9 @@
        <enum>QFrame::NoFrame</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QFrame" name="frame_9">
          <property name="frameShape">
@@ -105,7 +108,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="lineEdit_3"/>
+              <widget class="QLineEdit" name="eventName"/>
              </item>
             </layout>
            </widget>
@@ -127,10 +130,10 @@
               </widget>
              </item>
              <item>
-              <widget class="QTimeEdit" name="timeEdit"/>
+              <widget class="QTimeEdit" name="eventTime"/>
              </item>
              <item>
-              <widget class="QDateEdit" name="dateEdit">
+              <widget class="QDateEdit" name="eventDate">
                <property name="locale">
                 <locale language="Russian" country="Russia"/>
                </property>
@@ -147,7 +150,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
  <connections/>

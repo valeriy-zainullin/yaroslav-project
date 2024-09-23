@@ -42,8 +42,15 @@ api::Result api::request(const QString& method, const QVector<QString>& args, co
         switch (httpMethod) {
         case HttpMethod::Get:  return netmanager->get(request);
         case HttpMethod::Post: {
+            // Уберем жалобу qt на отсутствие content type.
             request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
             return netmanager->post(request, QByteArray());
+        }
+        case HttpMethod::Patch: {
+            return netmanager->sendCustomRequest(request, "PATCH");
+        }
+        case HttpMethod::Delete: {
+            return netmanager->deleteResource(request);
         }
         }
         return netmanager->get(request);
