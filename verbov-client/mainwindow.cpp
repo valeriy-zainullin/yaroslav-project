@@ -170,11 +170,15 @@ void MainWindow::on_calendarWidget_selectionChanged()
 }
 
 void MainWindow::show_event(const Event& event) {
+    switching_events = true;
+
     ui->eventName->setText(event.name);
 
     QDateTime event_time = QDateTime::fromSecsSinceEpoch(event.timestamp);
     ui->eventDate->setDate(event_time.date());
     ui->eventTime->setTime(event_time.time());
+
+    switching_events = false;
 }
 
 void MainWindow::on_eventList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
@@ -239,6 +243,7 @@ void MainWindow::update_selected_event() {
 
 void MainWindow::on_eventName_textEdited(const QString &new_value)
 {
+    // qInfo() << "switching_events" << switching_events;
     update_selected_event();
 }
 
@@ -269,12 +274,32 @@ void MainWindow::on_deleteEventBtn_clicked()
 
 void MainWindow::on_eventTime_userTimeChanged(const QTime &time)
 {
+    // qInfo() << "switching_events" << switching_events;
+    if (switching_events) {
+        // Игнорируем обновления, которые вызвал наш код,
+        // а не пользовательский ввод.
+        // Для редактирования имени события не надо такое
+        // отсечение, т.к. сигнал onTextEdited выдается
+        // только при редактировании пользователем.
+        // Можно проверить на практике, тоже.
+        return;
+    }
     update_selected_event();
 }
 
 
 void MainWindow::on_eventDate_userDateChanged(const QDate &date)
 {
+    // qInfo() << "switching_events" << switching_events;
+    if (switching_events) {
+        // Игнорируем обновления, которые вызвал наш код,
+        // а не пользовательский ввод.
+        // Для редактирования имени события не надо такое
+        // отсечение, т.к. сигнал onTextEdited выдается
+        // только при редактировании пользователем.
+        // Можно проверить на практике, тоже.
+        return;
+    }
     update_selected_event();
 }
 

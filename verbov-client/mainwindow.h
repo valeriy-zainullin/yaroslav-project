@@ -51,6 +51,8 @@ private:
     QVector<quint64> dirty_events;
     QTimer server_commit_timer;
 
+    bool switching_events = false;
+
     QVector<Event> events;
 };
 #endif // MAINWINDOW_H

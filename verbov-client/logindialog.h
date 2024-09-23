@@ -24,6 +24,8 @@ private slots:
 
     void on_loginBtn_clicked();
 
+    void on_helpBtn_clicked();
+
 private:
     void onLoggedIn(QString token);
 

@@ -1,7 +1,9 @@
 #include "logindialog.h"
 #include "ui_logindialog.h"
 
+#include <QByteArray>
 #include <QToolTip>
+#include <QFile>
 
 #include "mainwindow.h"
 #include "api.h"
@@ -15,7 +17,18 @@ LoginDialog::LoginDialog(QWidget *parent)
     // Prevent resizing.
     setFixedSize(width(), height());
 
-    onLoggedIn("478d560b326501d4e07248e95ee5c5037fd4ccc526aafbc793dd20a7319e88f1");
+    QFile token_file("token.txt");
+    if (token_file.exists()) {
+        if (token_file.open(QFile::OpenModeFlag::ReadOnly)) {
+            // TODO: проверять здесь, что сессия с сохранненым токеном не истекла.
+            // TODO: при просроченном токене на любой операции с API предупреждать,
+            // что нужно перезапустить приложение.
+            onLoggedIn(QString(token_file.readAll()).remove('\n').remove('\r'));
+            return;
+        }
+    }
+
+    show();
 }
 
 LoginDialog::~LoginDialog()
@@ -41,7 +54,6 @@ void LoginDialog::onLoggedIn(QString token) {
     hide();
 }
 
-
 void LoginDialog::on_loginBtn_clicked()
 {
     QString vkProfile = ui->vkEdit->text();
@@ -50,9 +62,27 @@ void LoginDialog::on_loginBtn_clicked()
     api::Result result = api::request("login", {"vk_profile", "password"}, {vkProfile, pass});
 
     if (result.success) {
-        onLoggedIn(result.content);
+        QString token(result.content);
+
+        QFile token_file("token.txt");
+        if (token_file.open(QFile::OpenModeFlag::WriteOnly)) {
+            token_file.write(token.toUtf8());
+        }
+
+        onLoggedIn(token);
     } else {
         QToolTip::showText(QCursor::pos(), result.content);
     }
+}
+
+
+void LoginDialog::on_helpBtn_clicked()
+{
+    QToolTip::showText(
+        QCursor::pos(),
+        "Профиль в формате id1234 или username.\n"
+        "Для регистрации введите профиль и нажмите соответствующую кнопку."
+        );
+
 }
 
