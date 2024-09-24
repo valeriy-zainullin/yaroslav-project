@@ -22,58 +22,59 @@ MainWindow::MainWindow(QString token, QWidget *parent)
         stream >> events;
         // Обновим список в графическом интерфейсе.
         on_calendarWidget_selectionChanged();
-        server_commit_timer.setInterval(2500);
-        connect(&server_commit_timer, &QTimer::timeout, [this]() {
-            // Удалим повторые изменения событий.
-            // В самом событии записана актуальная информация.
-            // Благодаря обработчикам слотов виджетов. Они, по
-            // моему представлению, все запускаются в event-loop-е
-            // внутри QApplication::exec().
-            std::sort(dirty_events.begin(), dirty_events.end());
-            dirty_events.erase(std::unique(dirty_events.begin(), dirty_events.end()), dirty_events.end());
-            size_t num_done = 0;
-            for (const quint64 event_id: dirty_events) {
-                auto event_it = std::find_if(
-                    events.begin(),
-                    events.end(),
-                    [event_id](const auto& event) { return event.get_id() == event_id; }
-                );
-                if (event_it == events.end()) {
-                    // Уже удалили событие. Тогда обновлять не надо.
-                    continue;
-                }
-                const Event& event = *event_it;
-
-                api::Result result = api::request(
-                    "event",
-                    {"event_id", "name", "timestamp"},
-                    {QString::number(event.get_id()), event.name, QString::number(event.timestamp)},
-                    token_,
-                    api::HttpMethod::Patch
-                );
-
-                if (result.success) {
-                    num_done += 1;
-
-                    // Обновляем вид в списке
-                    for (int i = 0; i < ui->eventList->count(); ++i) {
-                        QListWidgetItem* item = ui->eventList->item(i);
-                        auto event_item = dynamic_cast<EventListItem*>(item);
-                        assert(event_item != 0);
-                        if (event_item->event_id == event.get_id()) {
-                            event_item->setText(event.name);
-                            break;
-                        }
-                    }
-                } else {
-                    QToolTip::showText(QCursor::pos(), QString(result.content));
-                    break;
-                }
-            }
-            dirty_events.erase(dirty_events.begin(), dirty_events.begin() + num_done);
-        });
-        server_commit_timer.start();
     }
+
+    server_commit_timer.setInterval(2500);
+    connect(&server_commit_timer, &QTimer::timeout, [this]() {
+        // Удалим повторые изменения событий.
+        // В самом событии записана актуальная информация.
+        // Благодаря обработчикам слотов виджетов. Они, по
+        // моему представлению, все запускаются в event-loop-е
+        // внутри QApplication::exec().
+        std::sort(dirty_events.begin(), dirty_events.end());
+        dirty_events.erase(std::unique(dirty_events.begin(), dirty_events.end()), dirty_events.end());
+        size_t num_done = 0;
+        for (const quint64 event_id: dirty_events) {
+            auto event_it = std::find_if(
+                events.begin(),
+                events.end(),
+                [event_id](const auto& event) { return event.get_id() == event_id; }
+                );
+            if (event_it == events.end()) {
+                // Уже удалили событие. Тогда обновлять не надо.
+                continue;
+            }
+            const Event& event = *event_it;
+
+            api::Result result = api::request(
+                "event",
+                {"event_id", "name", "timestamp"},
+                {QString::number(event.get_id()), event.name, QString::number(event.timestamp)},
+                token_,
+                api::HttpMethod::Patch
+                );
+
+            if (result.success) {
+                num_done += 1;
+
+                // Обновляем вид в списке
+                for (int i = 0; i < ui->eventList->count(); ++i) {
+                    QListWidgetItem* item = ui->eventList->item(i);
+                    auto event_item = dynamic_cast<EventListItem*>(item);
+                    assert(event_item != 0);
+                    if (event_item->event_id == event.get_id()) {
+                        event_item->setText(event.name);
+                        break;
+                    }
+                }
+            } else {
+                QToolTip::showText(QCursor::pos(), QString(result.content));
+                break;
+            }
+        }
+        dirty_events.erase(dirty_events.begin(), dirty_events.begin() + num_done);
+    });
+    server_commit_timer.start();
 }
 
 MainWindow::~MainWindow()
