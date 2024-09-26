@@ -8,6 +8,7 @@
 #include "DB/session.h"
 #include "DB/user.h"
 #include "DB/event.h"
+#include "DB/eventparticipant.h"
 
 #include "vk.h"
 
@@ -16,6 +17,7 @@ static bool check_tables(QSqlDatabase& db) {
     CHECK(User::check_table(db));
     CHECK(Session::check_table(db));
     CHECK(Event::check_table(db));
+    CHECK(EventParticipant::check_table(db));
 
     return true;
 }
@@ -107,7 +109,7 @@ static QString generate_password() {
 
 static QString basic_html(const QString& text) {
     return "<!DOCTYPE html><html><meta charset=\"utf-8\">"
-           "<title>Приложение \"Календарь\"></title><head></head><body>" +
+           "<title>Планировщик событий</title><head></head><body>" +
            text +
            "</body></html>";
 }
@@ -176,7 +178,7 @@ static int run_server(QCoreApplication& app) {
                 QString vk_error_msg;
                 if (vk::send_message(
                         maybe_user->get_vk_id(),
-                        "Добро пожаловать в приложение \"календарь\".\nСсылка для подтверждения вашей регистрации: "
+                        "Добро пожаловать в приложение \"Планировщик событий\".\nСсылка для подтверждения вашей регистрации: "
                             + make_confirmation_link(*maybe_user),
                         0,
                         vk_error_code,
@@ -213,7 +215,7 @@ static int run_server(QCoreApplication& app) {
 
             if (!vk::send_message(
                     user.get_vk_id(),
-                    "Добро пожаловать в приложение \"календарь\". \nВаш пароль: " + password + "\nСсылка для подтверждения вашей регистрации: " +
+                    "Добро пожаловать в приложение \"Планировщик событий\". \nВаш пароль: " + password + "\nСсылка для подтверждения вашей регистрации: " +
                         make_confirmation_link(user),
                     0,
                     vk_error_code,
@@ -392,7 +394,7 @@ static int run_server(QCoreApplication& app) {
             qint64 creator_user_id = maybe_session->user_id;
 
             QString name = request.query().queryItemValue("name");
-            uint64_t timestamp = 0;
+            quint64 timestamp = 0;
             bool is_integer = false;
             timestamp = request.query().queryItemValue("timestamp").toULongLong(&is_integer);
             if (!is_integer) {
@@ -454,7 +456,7 @@ static int run_server(QCoreApplication& app) {
             stream << *maybe_event;
             return QHttpServerResponse(
                 result,
-                QHttpServerResponse::StatusCode::InternalServerError
+                QHttpServerResponse::StatusCode::Ok
                 );
         }
 
@@ -503,10 +505,111 @@ static int run_server(QCoreApplication& app) {
         }
 
         }
+    });
+    server.route("/get_me", [&db](const QHttpServerRequest& request) {
+        QString token = request.query().queryItemValue("token");
 
+        std::optional<Session> maybe_session;
+        if (!Session::fetch_by_token(db, token, maybe_session)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_session.has_value() || maybe_session->is_expired()) {
+            return QHttpServerResponse(
+                "Сессия истекла",
+                QHttpServerResponse::StatusCode::NetworkAuthenticationRequired
+                );
+        }
+
+        std::optional<User> maybe_user;
+        if (!User::fetch_by_vk_id(db, maybe_session->user_id, maybe_user)) {
+            // В схеме таблицы стоит ON DELETE RESTRICT на foreign key.
+            // Такое случаться не должно.
+            return QHttpServerResponse(
+                "Внутренняя ошибка (2).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        // Обновим имя и фамилию пользователя.
+        // Вдруг что-то из этого поменялось.
+        const QString vk_profile = "id" + QString::number(maybe_user->get_vk_id());
+        int vk_error_code = 0;
+        QString vk_error_msg;
+        qint64 vk_id = 0;
+        QString first_name;
+        QString last_name;
+        if (vk::get_user(vk_profile, first_name, last_name, vk_id, vk_error_code, vk_error_msg)) {
+            QString old_first_name = maybe_user->first_name;
+            QString old_last_name  = maybe_user->last_name;
+
+            // Если получилось, обновим информацию.
+            maybe_user->first_name = first_name;
+            maybe_user->last_name = last_name;
+
+            // Если не получилось обновить, вернем все как было, выдадим пользователю.
+            if (!maybe_user->update(db)) {
+                maybe_user->first_name = old_first_name;
+                maybe_user->last_name = old_last_name;
+            }
+        }
+
+        QByteArray result;
+        QDataStream stream(result);
+        stream << *maybe_user;
+        return QHttpServerResponse(
+            result,
+            QHttpServerResponse::StatusCode::Ok
+            );
+    });
+    server.route("/event_participant", [&db](const QHttpServerRequest& request) {
+        QString token = request.query().queryItemValue("token");
+
+        std::optional<Session> maybe_session;
+        if (!Session::fetch_by_token(db, token, maybe_session)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_session.has_value() || maybe_session->is_expired()) {
+            return QHttpServerResponse(
+                "Сессия истекла",
+                QHttpServerResponse::StatusCode::NetworkAuthenticationRequired
+                );
+        }
+
+        switch (request.method()) {
+        case QHttpServerRequest::Method::Patch: {
+            bool is_integer = false;
+
+            // Текущий пользователь регистрируется.
+            quint64 user_id = maybe_session->user_id;
+
+            QString event_refer = request.query().queryItemValue("refer");
+
+            std::optional<Event> event;
+
+            quint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+            if (!is_integer) {
+                return QHttpServerResponse(
+                    basic_html("Недопустимый код подтверждения."),
+                    QHttpServerResponse::StatusCode::NotFound
+                    );
+            }
+
+            Event
+
+        }
+        }
     });
 
-    uint16_t port = server.listen(QHostAddress("127.0.0.1"), 8080);
+
+    quint16 port = server.listen(QHostAddress("127.0.0.1"), 8080);
     if (port == 0) {
         qInfo() << "failed to listen on port";
         return -1;

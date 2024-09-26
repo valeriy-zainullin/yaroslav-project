@@ -7,14 +7,19 @@
 
 #include <optional>
 
-const QString User::table_name = "Users";
+const char User::table_name[] = "Users";
 
-const QString password_salt = "#7923sdjjfkddrjkhjfjdflksjglmxc.,vmlk;g";
+// Shouldn't use QString here.
+// clazy complains it's a global static non-POD objeect.
+// https://stackoverflow.com/questions/1538137/c-static-global-non-pod-theory-and-practice
+// https://stackoverflow.com/a/1538193
+// https://stackoverflow.com/a/1539744
+// https://kde-frameworks-devel.kde.narkive.com/fzXydSnh/qstring-qstringliteral-conversions-might-make-applications-crash-on-exit
+static const char password_salt[] = "#7923sdjjfkddrjkhjfjdflksjglmxc.,vmlk;g";
 // Если БД утечет, подобрать именно пароли не получится путем подбора строки,
 //   у которой такой же хеш. Вот бы еще код не утек.
 
 #define CHECK(expr) if (!(expr)) { return false; }
-// Не используется, если включен NDEBUG.
 bool User::run_tests(QSqlDatabase& test_db) {
     User user1;
     user1.first_name = "Ярослав";
@@ -70,16 +75,10 @@ static QString hash_password(const QStringView password) {
     // QCryptographicHash docs: https://doc.qt.io/qt-5/qcryptographichash.html
     QCryptographicHash hash(QCryptographicHash::Algorithm::Sha3_256);
     hash.addData(password.toUtf8());
-    hash.addData(password_salt.toUtf8());
+    hash.addData(password_salt);
     return hash.result().toHex();
 }
 
-// User
-//   uint64_t id;
-//   QString first_name;
-//   QString last_name;
-//   QString email;
-//   QString password_hash;
 bool User::unpack_from_query(QSqlQuery& query) {
     // Unpack a returned user. First row is extracted.
     bool right_variant = true;
@@ -125,11 +124,6 @@ bool User::check_table(QSqlDatabase& db) {
     // QSqlQuery docs: https://doc.qt.io/qt-6/sql-sqlstatements.html
     QSqlQuery query(db);
 
-    // uint64_t id;
-    // QString first_name;
-    // QString last_name;
-    // QString email;
-    // QString password_hash;
     // SQL LIKE operator. https://www.w3schools.com/sql/sql_like.asp
     // Turns out ids in sqlite start from 1. That's great.
     //   https://stackoverflow.com/questions/692856/set-start-value-for-autoincrement-in-sqlite
@@ -252,3 +246,26 @@ bool User::check_password(const QStringView input_password) const {
 
 
 User::User() {}
+
+// Хотим уметь посылать клиенту информацию о пользователе.
+
+QDataStream& operator<<(QDataStream& out, const User& entry) {
+    out << entry.vk_id;
+    out << entry.first_name;
+    out << entry.last_name;
+    out << entry.reg_confirmed;
+    out << entry.reg_code;
+
+    return out;
+}
+
+QDataStream& operator>>(QDataStream& in,  User& entry) {
+    in >> entry.vk_id;
+    in >> entry.first_name;
+    in >> entry.last_name;
+    in >> entry.reg_confirmed;
+    in >> entry.reg_code;
+
+    return in;
+}
+

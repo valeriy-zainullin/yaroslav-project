@@ -11,15 +11,15 @@
 class Session
 {
 private:
-    uint64_t id = 0;
+    quint64 id = 0;
 public:
-    uint64_t user_id = 0;
+    quint64 user_id = 0;
 
     QString token;
-    uint64_t start_time = 0;
+    quint64 start_time = 0;
 private:
     static const QString table_name;
-    static const uint64_t max_duration_sec = 5 * 24 * 60 * 60;
+    static const quint64 max_duration_sec = 5 * 24 * 60 * 60;
 public:
     // Public static methods.
 
@@ -31,12 +31,12 @@ public:
 
     static bool run_tests(QSqlDatabase& test_db);
 
-    static bool fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Session>& found_session);
+    static bool fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Session>& found_session);
     static bool fetch_by_token(QSqlDatabase& db, const QStringView token, std::optional<Session>& found_session);
 public:
     // Public plain methods.
 
-    uint64_t get_id() const { return id; }
+    quint64 get_id() const { return id; }
 
     // Если объекта нет в БД, то update и drop могут вернуть успех, ничего не сделав.
     // Обновить или удалить 0 строк вполне нормально по мнению запроса SQL. Можно проверять

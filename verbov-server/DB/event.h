@@ -17,7 +17,8 @@ public:
     QString name;
     quint64 creator_user_id = 0;
     quint64 timestamp; // UTC+0 unix time when the event will happen
-private:
+    QString invitation_str;
+public:
     static const QString table_name;
 public:
     bool unpack_from_query(QSqlQuery& query);
@@ -28,12 +29,12 @@ public:
 
     static bool run_tests(QSqlDatabase& test_db);
 
-    static bool fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Event>& found_event);
-    static bool fetch_all_for_user(QSqlDatabase& db, uint64_t user_id, QVector<Event>& found_events);
+    static bool fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Event>& found_event);
+    static bool fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVector<Event>& found_events);
 public:
     // Public plain methods.
 
-    uint64_t get_id() const { return id; }
+    quint64 get_id() const { return id; }
 
     // Если объекта нет в БД, то update и drop могут вернуть успех, ничего не сделав.
     // Обновить или удалить 0 строк вполне нормально по мнению запроса SQL. Можно проверять

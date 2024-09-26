@@ -85,7 +85,7 @@ bool Event::check_table(QSqlDatabase& db) {
     return true;
 }
 
-bool Event::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Event>& found_session) {
+bool Event::fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Event>& found_session) {
     Event event;
     QSqlQuery query(db);
 
@@ -114,8 +114,7 @@ bool Event::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Event>& fou
     return true;
 }
 
-bool Event::fetch_all_for_user(QSqlDatabase& db, uint64_t user_id, QVector<Event>& found_events) {
-    Event event;
+bool Event::fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVector<Event>& found_events) {
     QSqlQuery query(db);
 
     query.prepare("SELECT * FROM " + table_name + " WHERE creator_user_id = :user_id");

@@ -11,17 +11,17 @@
 class User
 {
 private:
-    qint64 vk_id;
+    quint64 vk_id;
 public:
     QString first_name;
     QString last_name;
     bool reg_confirmed = false;
-    uint32_t reg_code = 0;
+    quint32 reg_code = 0;
 
     QString password_hash;
 public:
     friend class Session; // Needs table_name from here.
-    static const QString table_name;
+    static const char table_name[];
 public:
     // Public static methods.
 
@@ -37,7 +37,7 @@ public:
 public:
     // Public plain methods.
 
-    uint64_t get_vk_id() const { return vk_id; }
+    quint64 get_vk_id() const { return vk_id; }
 
     // Если объекта нет в БД, то update и drop могут вернуть успех, ничего не сделав.
     // Обновить или удалить 0 строк вполне нормально по мнению запроса SQL. Можно проверять
@@ -56,8 +56,15 @@ public:
 
     bool operator==(const User& other) const = default;
 
+    friend QDataStream& operator<<(QDataStream& out, const User& entry);
+    friend QDataStream& operator>>(QDataStream& in,  User& entry);
+
 private:
     User();
 };
+
+QDataStream& operator<<(QDataStream& out, const User& entry);
+QDataStream& operator>>(QDataStream& in,  User& entry);
+
 
 #endif // USER_H

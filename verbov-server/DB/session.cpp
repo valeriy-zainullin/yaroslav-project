@@ -139,7 +139,7 @@ bool Session::check_table(QSqlDatabase& db) {
     return true;
 }
 
-bool Session::fetch_by_id(QSqlDatabase& db, uint64_t id, std::optional<Session>& found_session) {
+bool Session::fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Session>& found_session) {
     Session session;
     QSqlQuery query(db);
 
@@ -273,7 +273,7 @@ bool Session::generate_token(QSqlDatabase& db) {
     static std::mt19937_64 mt(rd());
 
     for (int i = 0; i < max_num_iters; ++i) {
-        uint64_t value = mt();
+        quint64 value = mt();
 
         // QCryptographicHash docs: https://doc.qt.io/qt-5/qcryptographichash.html
         QCryptographicHash hash(QCryptographicHash::Algorithm::Sha3_256);
