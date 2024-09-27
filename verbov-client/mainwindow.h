@@ -41,6 +41,10 @@ private slots:
 
     void on_eventDate_userDateChanged(const QDate &date);
 
+    void on_viewReferLbl_linkActivated(const QString &link);
+
+    void on_enrollByReferLbl_linkActivated(const QString &link);
+
 private:
     void update_selected_event();
 private:

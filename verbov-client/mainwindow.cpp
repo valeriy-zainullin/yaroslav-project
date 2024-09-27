@@ -1,10 +1,12 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
+#include <QClipboard>
 #include <QToolTip>
 #include <QListWidgetItem>
 
 #include "api.h"
+#include "enrolldialog.h"
 #include "EventListItem.h"
 
 MainWindow::MainWindow(QString token, QWidget *parent)
@@ -184,10 +186,13 @@ void MainWindow::show_event(const Event& event) {
 
 void MainWindow::on_eventList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
+    static const QString viewReferLblInitialText = ui->viewReferLbl->text();
+
     if (current == nullptr) {
         // Выделение сбросилось.
         // Возможно, список очистился. Тогда очистим формы.
         // И сбросим id активного события.
+        // Заблокируем виджеты просмотра текущего события.
 
         selected_event_id.reset();
 
@@ -195,7 +200,18 @@ void MainWindow::on_eventList_currentItemChanged(QListWidgetItem *current, QList
         ui->eventDate->setDate(ui->calendarWidget->selectedDate());
         ui->eventTime->setTime(QTime(8, 0));
 
+        // Для вложенных виджетов (у которых этот frame родитель)
+        // наследуется.
+        ui->eventCtrlFrame->setEnabled(false);
+        ui->viewReferLbl->setText(viewReferLblInitialText); // Поскольку внутри не ссылка, текст станет серым.
+
         return;
+    } else if (previous == nullptr) {
+        // Разблокируем виджеты просмотра текущего события.
+        ui->eventCtrlFrame->setEnabled(true);
+        ui->eventNameLbl->setEnabled(true);
+        ui->eventDTLbl->setEnabled(true);
+        ui->viewReferLbl->setText("[" + viewReferLblInitialText + "](123)");
     }
 
     EventListItem* event_item = dynamic_cast<EventListItem*>(current);
@@ -304,3 +320,49 @@ void MainWindow::on_eventDate_userDateChanged(const QDate &date)
     update_selected_event();
 }
 
+void MainWindow::on_viewReferLbl_linkActivated(const QString &link)
+{
+    if (!selected_event_id.has_value()) {
+        return;
+    }
+
+    // https://www.google.com/search?q=qt+put+string+into+clibpboard
+    // https://doc.qt.io/qt-6/qclipboard.html#setText
+
+    for (auto& event: events) {
+        if (event.get_id() == selected_event_id.value()) {
+            // https://doc.qt.io/qt-6/qclipboard.html#details
+            assert(QGuiApplication::clipboard() != nullptr);
+            QGuiApplication::clipboard()->setText(event.refer_str);
+
+            QToolTip::showText(QCursor::pos(), "Код скопирован в буфер обмена!");
+
+            break;
+        }
+    }
+}
+
+void MainWindow::on_enrollByReferLbl_linkActivated(const QString &link)
+{
+    EnrollDialog dlg(token_, this);
+
+    dlg.show();
+
+    dlg.exec();
+
+    if (dlg.result() == QDialog::DialogCode::Accepted) {
+        // Событие должно быть, добавим к себе в список.
+        events.append(dlg.maybe_event.value());
+
+        // Добавляем в конец ListWidget, не сортируем.
+        // Ничего страшного.
+        new EventListItem(events.back(), ui->eventList);
+        // Не будем ждать несколько секунд, пока список обновится.
+        // Хотя это хорошо, что обновления накапливаются, иначе
+        // работать будет медленно. Например, насколько помню,
+        // для виждета список в документации wxWidgets все элементы
+        // сразу рекомендуют устанавливать.
+        ui->eventList->update();
+
+    }
+}

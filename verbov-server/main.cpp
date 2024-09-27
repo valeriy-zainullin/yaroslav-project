@@ -107,6 +107,18 @@ static QString generate_password() {
     return result;
 }
 
+static QString generate_event_refer() {
+    auto generator = std::mt19937(std::random_device()());
+    static constexpr size_t length = 10;
+
+    QString result;
+    for (size_t i = 0; i < length; ++i) {
+        char added_char = 'a' + generator() % ('z' - 'a' + 1);
+        result.append(added_char);
+    }
+    return result;
+}
+
 static QString basic_html(const QString& text) {
     return "<!DOCTYPE html><html><meta charset=\"utf-8\">"
            "<title>Планировщик событий</title><head></head><body>" +
@@ -334,8 +346,6 @@ static int run_server(QCoreApplication& app) {
                 );
         }
 
-        qInfo() << "password" << password;
-
         if (maybe_user->reg_confirmed && maybe_user->check_password(password)) {
             User user = std::move(maybe_user.value());
             std::optional<Session> maybe_session;
@@ -349,7 +359,7 @@ static int run_server(QCoreApplication& app) {
         }
 
         return QHttpServerResponse(
-            "Не удалось войти, проверьте vk_id и пароль",
+            "Не удалось войти, проверьте название профиля и пароль",
             QHttpServerResponse::StatusCode::NotFound
         );
     });
@@ -409,6 +419,12 @@ static int run_server(QCoreApplication& app) {
             event.name = name;
             event.creator_user_id = creator_user_id;
             event.timestamp = timestamp;
+            if (!event.generate_refer(db)) {
+                return QHttpServerResponse(
+                    "Не удалось создать ссылку для приглашения на событие.",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
 
             if (!event.create(db)) {
                 return QHttpServerResponse(
@@ -451,6 +467,8 @@ static int run_server(QCoreApplication& app) {
 
         switch (request.method()) {
         case QHttpServerRequest::Method::Get: {
+            // Или владелец, или участник.
+
             QByteArray result;
             QDataStream stream(result);
             stream << *maybe_event;
@@ -461,6 +479,8 @@ static int run_server(QCoreApplication& app) {
         }
 
         case QHttpServerRequest::Method::Patch: {
+            // Только владелец.
+
             if (request.query().hasQueryItem("name")) {
                 maybe_event->name = request.query().queryItemValue("name");
             }
@@ -484,6 +504,8 @@ static int run_server(QCoreApplication& app) {
         }
 
         case QHttpServerRequest::Method::Delete: {
+            // Только владелец.
+
             if (!maybe_event->drop(db)) {
                 return QHttpServerResponse(
                     "Внутренняя ошибка (5).",
@@ -491,10 +513,7 @@ static int run_server(QCoreApplication& app) {
                     );
             }
 
-            return QHttpServerResponse(
-                "",
-                QHttpServerResponse::StatusCode::Ok
-                );
+            return QHttpServerResponse("", QHttpServerResponse::StatusCode::Ok);
         }
 
         default: {
@@ -565,7 +584,149 @@ static int run_server(QCoreApplication& app) {
             QHttpServerResponse::StatusCode::Ok
             );
     });
-    server.route("/event_participant", [&db](const QHttpServerRequest& request) {
+    server.route("/event_get_host", [&db](const QHttpServerRequest& request) {
+        QString token = request.query().queryItemValue("token");
+
+        std::optional<Session> maybe_session;
+        if (!Session::fetch_by_token(db, token, maybe_session)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_session.has_value() || maybe_session->is_expired()) {
+            return QHttpServerResponse(
+                "Сессия истекла",
+                QHttpServerResponse::StatusCode::NetworkAuthenticationRequired
+                );
+        }
+
+        bool is_integer = false;
+        qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID события.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
+        }
+
+        is_integer = false;
+        qint64 user_id = request.query().queryItemValue("user_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID пользователя.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
+        }
+
+        std::optional<Event> maybe_event;
+
+        if (!Event::fetch_by_id(db, event_id, maybe_event)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (2).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_event.has_value() || maybe_event->creator_user_id == maybe_session->user_id) {
+            return QHttpServerResponse(
+                "Событие не найдено.",
+                QHttpServerResponse::StatusCode::NotFound
+                );
+        }
+
+        std::optional<User> maybe_user;
+        if (!User::fetch_by_vk_id(db, maybe_session->user_id, maybe_user)) {
+            // В схеме таблицы стоит ON DELETE RESTRICT на foreign key.
+            // Такое случаться не должно.
+            return QHttpServerResponse(
+                "Внутренняя ошибка (2).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        QByteArray result;
+        QDataStream stream(result);
+        stream << *maybe_user;
+        return QHttpServerResponse(
+            result,
+            QHttpServerResponse::StatusCode::Ok
+            );
+
+        return QHttpServerResponse(result);
+    });
+    server.route("/event_delete_participant", [&db](const QHttpServerRequest& request) {
+        QString token = request.query().queryItemValue("token");
+
+        std::optional<Session> maybe_session;
+        if (!Session::fetch_by_token(db, token, maybe_session)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_session.has_value() || maybe_session->is_expired()) {
+            return QHttpServerResponse(
+                "Сессия истекла",
+                QHttpServerResponse::StatusCode::NetworkAuthenticationRequired
+                );
+        }
+
+        bool is_integer = false;
+        qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID события.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
+        }
+
+        is_integer = false;
+        qint64 user_id = request.query().queryItemValue("user_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID пользователя.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
+        }
+
+        std::optional<Event> maybe_event;
+
+        if (!Event::fetch_by_id(db, event_id, maybe_event)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (2).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_event.has_value() || maybe_event->creator_user_id == maybe_session->user_id) {
+            return QHttpServerResponse(
+                "Событие не найдено.",
+                QHttpServerResponse::StatusCode::NotFound
+                );
+        }
+
+        std::optional<EventParticipant> maybe_participant;
+
+        if (!EventParticipant::fetch(db, event_id, user_id, maybe_participant)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (3).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_participant->drop(db)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (4).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        return QHttpServerResponse(QHttpServerResponse::StatusCode::Ok);
+    });
+    server.route("/event_register", [&db](const QHttpServerRequest& request) {
         QString token = request.query().queryItemValue("token");
 
         std::optional<Session> maybe_session;
@@ -584,26 +745,129 @@ static int run_server(QCoreApplication& app) {
         }
 
         switch (request.method()) {
-        case QHttpServerRequest::Method::Patch: {
-            bool is_integer = false;
-
-            // Текущий пользователь регистрируется.
+        case QHttpServerRequest::Method::Post: {
+            // Текущий пользователь регистрируется на событие.
             quint64 user_id = maybe_session->user_id;
 
             QString event_refer = request.query().queryItemValue("refer");
 
-            std::optional<Event> event;
+            std::optional<Event> maybe_event;
 
-            quint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
-            if (!is_integer) {
+            if (!Event::fetch_by_refer(db, event_refer, maybe_event)) {
                 return QHttpServerResponse(
-                    basic_html("Недопустимый код подтверждения."),
+                    "Внутренняя ошибка (2).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            if (!maybe_event.has_value()) {
+                return QHttpServerResponse(
+                    "Событие не найдено.",
                     QHttpServerResponse::StatusCode::NotFound
                     );
             }
 
-            Event
+            std::optional<EventParticipant> maybe_participant;
+            if (!EventParticipant::fetch(db, maybe_event->get_id(), user_id, maybe_participant)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (3).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
 
+            if (maybe_participant.has_value() ||
+                maybe_event->creator_user_id == maybe_session->user_id) {
+                return QHttpServerResponse(
+                    "Вы уже участвуете в событии.",
+                    QHttpServerResponse::StatusCode::Conflict
+                    );
+            }
+
+            EventParticipant participant(maybe_event->get_id(), user_id);
+            participant.registered_time = QDateTime::currentSecsSinceEpoch();
+
+            if (!participant.create(db)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (3).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            QByteArray result;
+            QDataStream stream(result);
+            stream << *maybe_event;
+            return QHttpServerResponse(
+                result,
+                QHttpServerResponse::StatusCode::Ok
+                );
+        }
+
+        case QHttpServerRequest::Method::Delete: {
+            // Текущий пользователь снимает регистрацию.
+            quint64 user_id = maybe_session->user_id;
+
+            bool is_integer = false;
+            qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+            if (!is_integer) {
+                return QHttpServerResponse(
+                    "Недопустимый ID события.",
+                    QHttpServerResponse::StatusCode::NotAcceptable
+                    );
+            }
+
+            std::optional<Event> maybe_event;
+
+            if (!Event::fetch_by_id(db, event_id, maybe_event)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (2).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            if (!maybe_event.has_value()) {
+                return QHttpServerResponse(
+                    "Событие не найдено.",
+                    QHttpServerResponse::StatusCode::NotFound
+                    );
+            }
+
+            if (maybe_event->creator_user_id == maybe_session->user_id) {
+                return QHttpServerResponse(
+                    "Создатель не может отказаться от участия, только отменить событие.",
+                    QHttpServerResponse::StatusCode::BadRequest
+                    );
+            }
+
+            std::optional<EventParticipant> maybe_participant;
+            if (!EventParticipant::fetch(db, maybe_event->get_id(), user_id, maybe_participant)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (3).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            if (!maybe_participant.has_value()) {
+                return QHttpServerResponse(
+                    "Событие не найдено.",
+                    QHttpServerResponse::StatusCode::NotFound
+                    );
+            }
+
+            if (!maybe_participant->drop(db)) {
+                return QHttpServerResponse(
+                    "Внутренняя ошибка (4).",
+                    QHttpServerResponse::StatusCode::InternalServerError
+                    );
+            }
+
+            return QHttpServerResponse(QHttpServerResponse::StatusCode::Ok);
+        }
+
+        default: {
+            return QHttpServerResponse(
+                "Method is not supported",
+                QHttpServerResponse::StatusCode::MethodNotAllowed
+                );
         }
         }
     });

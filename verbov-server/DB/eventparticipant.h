@@ -27,7 +27,7 @@ public:
     // 5 -- notified an hour before the event
     // 6 -- notified 20 minutes before the event.
     // quint64 last_notification = 0;
-private:
+public:
     static const char table_name[];
 public:
     bool unpack_from_query(QSqlQuery& query);
@@ -38,6 +38,7 @@ public:
 
     static bool run_tests(QSqlDatabase& test_db);
 
+    static bool fetch(QSqlDatabase& db, quint64 event_id, quint64 user_id, std::optional<EventParticipant>& found_participation);
     static bool fetch_all_for_event(QSqlDatabase& db, quint64 event_id, QVector<EventParticipant>& found_participations);
     static bool fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVector<EventParticipant>& found_participations);
 public:

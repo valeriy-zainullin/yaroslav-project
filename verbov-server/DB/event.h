@@ -1,8 +1,6 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include <cstdint>
-
 #include <QDataStream>
 #include <QString>
 #include <QStringView>
@@ -17,7 +15,7 @@ public:
     QString name;
     quint64 creator_user_id = 0;
     quint64 timestamp; // UTC+0 unix time when the event will happen
-    QString invitation_str;
+    QString refer_str;
 public:
     static const QString table_name;
 public:
@@ -31,6 +29,7 @@ public:
 
     static bool fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Event>& found_event);
     static bool fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVector<Event>& found_events);
+    static bool fetch_by_refer(QSqlDatabase& db, const QString& refer_str, std::optional<Event>& found_event);
 public:
     // Public plain methods.
 
@@ -44,6 +43,8 @@ public:
     bool create(QSqlDatabase& db);
     bool update(QSqlDatabase& db);
     bool drop(QSqlDatabase& db);
+
+    bool generate_refer(QSqlDatabase& db);
 
     bool operator==(const Event& other) const = default;
 

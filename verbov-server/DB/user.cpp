@@ -133,7 +133,7 @@ bool User::check_table(QSqlDatabase& db) {
     // We have to write NOT NULL at PRIMARY KEYS of not integer type for sqlite due to a bug.
     //   https://stackoverflow.com/a/64778551
     query.prepare(
-        "CREATE TABLE IF NOT EXISTS " + table_name + "("
+        "CREATE TABLE IF NOT EXISTS " + QString(table_name) + "("
         "vk_id INTEGER(8)          NOT NULL PRIMARY KEY CHECK(vk_id >= 1),"
         "first_name VARCHAR(64)    NOT NULL             CHECK(first_name != ''),"
         "last_name VARCHAR(64)     NOT NULL             CHECK(last_name != ''),"
@@ -158,7 +158,7 @@ bool User::fetch_by_vk_id(QSqlDatabase& db, qint64 vk_id, std::optional<User>& f
     User user;
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + table_name + " WHERE vk_id = :vk_id");
+    query.prepare("SELECT * FROM " + QString(table_name) + " WHERE vk_id = :vk_id");
     query.bindValue(":vk_id", vk_id);
 
     if (!query.exec()) {
@@ -187,7 +187,7 @@ bool User::create(QSqlDatabase& db) {
     QSqlQuery query(db);
 
     query.prepare(
-        "INSERT INTO " + table_name + "(first_name, last_name, vk_id, reg_confirmed, reg_code, password_hash)"
+        "INSERT INTO " + QString(table_name) + "(first_name, last_name, vk_id, reg_confirmed, reg_code, password_hash)"
         " VALUES (:first_name, :last_name, :vk_id, :reg_confirmed, :reg_code, :password_hash)"
     );
     pack_into_query(query);
@@ -206,7 +206,7 @@ bool User::update(QSqlDatabase& db) {
     QSqlQuery query(db);
 
     query.prepare(
-        "UPDATE " + table_name + " " +
+        "UPDATE " + QString(table_name) + " " +
         "SET first_name = :first_name, last_name = :last_name, vk_id = :vk_id, reg_confirmed = :reg_confirmed, reg_code = :reg_code, password_hash = :password_hash "
         "WHERE vk_id = :vk_id"
     );
@@ -224,7 +224,7 @@ bool User::update(QSqlDatabase& db) {
 bool User::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare("DELETE FROM " + table_name + " WHERE vk_id = :vk_id");
+    query.prepare("DELETE FROM " + QString(table_name) + " WHERE vk_id = :vk_id");
     query.bindValue(":vk_id", QVariant::fromValue(vk_id));
 
     if (!query.exec()) {

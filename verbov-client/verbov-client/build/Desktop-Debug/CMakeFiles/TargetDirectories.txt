@@ -1,9 +1,0 @@
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/verbov-client.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/edit_cache.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/rebuild_cache.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/list_install_components.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/install.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/install/local.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/install/strip.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/verbov-client_autogen_timestamp_deps.dir
-D:/Qt/StartUp/verbov-client/verbov-client/build/Desktop-Debug/CMakeFiles/verbov-client_autogen.dir

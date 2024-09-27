@@ -39,7 +39,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="frame_2">
+     <widget class="QFrame" name="frame_1">
       <property name="enabled">
        <bool>true</bool>
       </property>
@@ -58,6 +58,43 @@
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
            <widget class="QListWidget" name="eventList"/>
+          </item>
+          <item>
+           <widget class="QFrame" name="frame_6">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>9</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item alignment="Qt::AlignRight|Qt::AlignVCenter">
+              <widget class="QLabel" name="enrollByReferLbl">
+               <property name="text">
+                <string>[Стать участником по коду](123)</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::MarkdownText</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </item>
           <item>
            <widget class="QFrame" name="frame_10">
@@ -86,7 +123,10 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame_3">
+        <widget class="QFrame" name="eventCtrlFrame">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
          </property>
@@ -97,10 +137,10 @@
              <enum>QFrame::NoFrame</enum>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="label">
+             <item alignment="Qt::AlignLeft|Qt::AlignVCenter">
+              <widget class="QLabel" name="eventNameLbl">
                <property name="enabled">
-                <bool>true</bool>
+                <bool>false</bool>
                </property>
                <property name="text">
                 <string>Название: </string>
@@ -108,7 +148,14 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="eventName"/>
+              <widget class="QLineEdit" name="eventName">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -119,10 +166,10 @@
              <enum>QFrame::NoFrame</enum>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QLabel" name="label_2">
+             <item alignment="Qt::AlignLeft|Qt::AlignVCenter">
+              <widget class="QLabel" name="eventDTLbl">
                <property name="enabled">
-                <bool>true</bool>
+                <bool>false</bool>
                </property>
                <property name="text">
                 <string>Дата и время:</string>
@@ -134,8 +181,51 @@
              </item>
              <item>
               <widget class="QDateEdit" name="eventDate">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="locale">
                 <locale language="Russian" country="Russia"/>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QFrame" name="frame">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <property name="topMargin">
+              <number>3</number>
+             </property>
+             <property name="rightMargin">
+              <number>9</number>
+             </property>
+             <property name="bottomMargin">
+              <number>4</number>
+             </property>
+             <item alignment="Qt::AlignRight|Qt::AlignVCenter">
+              <widget class="QLabel" name="viewReferLbl">
+               <property name="text">
+                <string>Код приглашения</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::MarkdownText</enum>
                </property>
               </widget>
              </item>

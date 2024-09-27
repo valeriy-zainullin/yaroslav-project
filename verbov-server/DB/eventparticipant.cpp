@@ -64,9 +64,9 @@ bool EventParticipant::check_table(QSqlDatabase& db) {
     //   https://stackoverflow.com/a/64778551
     query.prepare(
         "CREATE TABLE IF NOT EXISTS " + QString(table_name) + "("
-            "event_id        INTEGER    NOT NULL                           CHECK(name != ''),"
-            "user_id         INTEGER    NOT NULL                           CHECK(creator_user_id >= 1),"
-            "registered_time INTEGER(8) NOT NULL                           CHECK(timestamp >= 0),"
+            "event_id        INTEGER    NOT NULL                           CHECK(event_id >= 1),"
+            "user_id         INTEGER    NOT NULL                           CHECK(user_id >= 1),"
+            "registered_time INTEGER(8) NOT NULL                           CHECK(registered_time >= 0),"
             "PRIMARY KEY (event_id, user_id),"
             "FOREIGN KEY (event_id) REFERENCES " + QString(Event::table_name) + "(id) ON DELETE CASCADE,"
             "FOREIGN KEY (user_id) REFERENCES "  + QString(User::table_name)  + "(vk_id) ON DELETE RESTRICT"
@@ -77,6 +77,37 @@ bool EventParticipant::check_table(QSqlDatabase& db) {
         qCritical() << query.lastError().text();
         return false;
     }
+
+    return true;
+}
+
+bool EventParticipant::fetch(QSqlDatabase& db, quint64 event_id, quint64 user_id, std::optional<EventParticipant>& found_participation) {
+    QSqlQuery query(db);
+
+    query.prepare("SELECT * FROM " + QString(table_name) + " WHERE event_id = :event_id AND user_id = :user_id");
+    query.bindValue(":event_id", QVariant::fromValue(event_id));
+    query.bindValue(":user_id", QVariant::fromValue(user_id));
+
+    if (!query.exec()) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
+
+    if (!query.first()) {
+        // Haven't found anything. But the query is successful.
+        found_participation.reset();
+        return true;
+    }
+
+    EventParticipant participant;
+
+    if (!participant.unpack_from_query(query)) {
+        // Failed to unpack. Treat as a failed query.
+        return false;
+    }
+
+    found_participation = std::move(participant);
 
     return true;
 }

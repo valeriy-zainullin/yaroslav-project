@@ -47,7 +47,7 @@
    <item>
     <widget class="QLineEdit" name="passEdit">
      <property name="echoMode">
-      <enum>QLineEdit::Normal</enum>
+      <enum>QLineEdit::Password</enum>
      </property>
      <property name="placeholderText">
       <string>Пароль</string>
