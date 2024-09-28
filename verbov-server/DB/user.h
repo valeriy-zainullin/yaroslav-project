@@ -8,6 +8,8 @@
 
 #include <QtSql/QSqlQuery>
 
+class Event;
+
 class User
 {
 private:
@@ -33,7 +35,8 @@ public:
 
     static bool run_tests(QSqlDatabase& test_db);
 
-    static bool fetch_by_vk_id(QSqlDatabase& db, qint64 vk_id, std::optional<User>& found_user);
+    static bool fetch_by_event_id(QSqlDatabase& db, quint64 event_id, QVector<User>& found_users);
+    static bool fetch_by_vk_id(QSqlDatabase& db, quint64 vk_id, std::optional<User>& found_user);
 public:
     // Public plain methods.
 
@@ -51,16 +54,13 @@ public:
     void set_password(const QStringView password);
     bool check_password(const QStringView input_password) const;
 
-    User(qint64 vk_id)
+    User(qint64 vk_id = 0)
         : vk_id(vk_id) {}
 
     bool operator==(const User& other) const = default;
 
     friend QDataStream& operator<<(QDataStream& out, const User& entry);
     friend QDataStream& operator>>(QDataStream& in,  User& entry);
-
-private:
-    User();
 };
 
 QDataStream& operator<<(QDataStream& out, const User& entry);

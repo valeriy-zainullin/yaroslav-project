@@ -1,11 +1,13 @@
 #include "user.h"
 
+#include <optional>
+
 #include <QtSql/QSqlTableModel>
 #include <QtSql/QSqlQuery>
 #include <QCryptographicHash>
 #include <QSqlError>
 
-#include <optional>
+#include "eventparticipant.h"
 
 const char User::table_name[] = "Users";
 
@@ -151,7 +153,7 @@ bool User::check_table(QSqlDatabase& db) {
     return true;
 }
 
-bool User::fetch_by_vk_id(QSqlDatabase& db, qint64 vk_id, std::optional<User>& found_user) {
+bool User::fetch_by_vk_id(QSqlDatabase& db, quint64 vk_id, std::optional<User>& found_user) {
     // Almost ctrl-c + ctrl-v from code for retrieval by id.
     // Query one row by an unique column.
 
@@ -179,6 +181,42 @@ bool User::fetch_by_vk_id(QSqlDatabase& db, qint64 vk_id, std::optional<User>& f
     }
 
     found_user = std::move(user);
+
+    return true;
+}
+
+bool User::fetch_by_event_id(QSqlDatabase& db, quint64 event_id, QVector<User>& found_users) {
+    QSqlQuery query(db);
+
+    query.prepare(
+        "SELECT * FROM " + QString(table_name) + " WHERE vk_id IN ("
+        "SELECT user_id FROM " + EventParticipant::table_name + " WHERE event_id = :event_id"
+    ")");
+    query.bindValue(":event_id", event_id);
+
+    if (!query.exec()) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
+
+    found_users.clear();
+
+    if (!query.first()) {
+        // Haven't found anything. But the query is successful.
+        return true;
+    }
+
+    do {
+        User user;
+
+        if (!user.unpack_from_query(query)) {
+            // Failed to unpack. Treat as a failed query.
+            return false;
+        }
+
+        found_users.push_back(std::move(user));
+    } while (query.next());
 
     return true;
 }
@@ -243,9 +281,6 @@ void User::set_password(const QStringView password) {
 bool User::check_password(const QStringView input_password) const {
     return password_hash == hash_password(input_password);
 }
-
-
-User::User() {}
 
 // Хотим уметь посылать клиенту информацию о пользователе.
 

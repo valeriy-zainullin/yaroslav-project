@@ -9,6 +9,7 @@
 #include "api.h"
 #include "enrolldialog.h"
 #include "EventListItem.h"
+#include "participantsdialog.h"
 
 MainWindow::MainWindow(User user, QString token, QWidget *parent)
     : QMainWindow(parent)
@@ -183,12 +184,29 @@ void MainWindow::show_event(const Event& event) {
     ui->eventDate->setDate(event_time.date());
     ui->eventTime->setTime(event_time.time());
 
+    // Если пользователь не является создателем события, он не сможет
+    // посмотреть участников. Кнопку просмотра участников нужно деактивировать.
+    // Это действительно initial text кнопки просмотра участников при первом
+    // исполнении этой функции. Поскольку обработчик смены события в списке
+    // до выполнения этой функции может только с initial text на initial text
+    // поменять...
+    // На самом деле, нужен менее костыльный способ сделать то, что здесь происходит...
+    static const QString viewParticipantsLblInitialText = ui->viewParticipantsLbl->text();
+    if (event.creator_user_id == user_.get_vk_id()) {
+        ui->viewParticipantsLbl->setText("[" + viewParticipantsLblInitialText + "](123)");
+        ui->viewParticipantsLbl->setEnabled(true);
+    } else {
+        ui->viewParticipantsLbl->setText(viewParticipantsLblInitialText);
+        ui->viewParticipantsLbl->setEnabled(false);
+    }
+
     switching_events = false;
 }
 
 void MainWindow::on_eventList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
     static const QString viewReferLblInitialText = ui->viewReferLbl->text();
+    static const QString viewParticipantsLblInitialText = ui->viewParticipantsLbl->text();
 
     if (current == nullptr) {
         // Выделение сбросилось.
@@ -206,6 +224,7 @@ void MainWindow::on_eventList_currentItemChanged(QListWidgetItem *current, QList
         // наследуется.
         ui->eventCtrlFrame->setEnabled(false);
         ui->viewReferLbl->setText(viewReferLblInitialText); // Поскольку внутри не ссылка, текст станет серым.
+        ui->viewParticipantsLbl->setText(viewParticipantsLblInitialText);
 
         return;
     } else if (previous == nullptr) {
@@ -393,9 +412,7 @@ void MainWindow::on_enrollByReferLbl_linkActivated(const QString &link)
 
     dlg.show();
 
-    dlg.exec();
-
-    if (dlg.result() == QDialog::DialogCode::Accepted) {
+    if (dlg.exec() == QDialog::DialogCode::Accepted) {
         // Событие должно быть, добавим к себе в список.
         events.append(dlg.maybe_event.value());
 
@@ -408,6 +425,21 @@ void MainWindow::on_enrollByReferLbl_linkActivated(const QString &link)
         // для виждета список в документации wxWidgets все элементы
         // сразу рекомендуют устанавливать.
         ui->eventList->update();
+    }
+}
 
+void MainWindow::on_viewParticipantsLbl_linkActivated(const QString &link)
+{
+    if (!selected_event_id.has_value()) {
+        return;
+    }
+
+    for (auto& event: events) {
+        if (event.get_id() == selected_event_id.value()) {
+            ParticipantsDialog dlg(token_, event, this);
+            dlg.exec();
+
+            break;
+        }
     }
 }

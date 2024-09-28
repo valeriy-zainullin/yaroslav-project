@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>748</width>
-    <height>395</height>
+    <height>387</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,6 +47,12 @@
        <enum>QFrame::NoFrame</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>9</number>
+       </property>
        <property name="bottomMargin">
         <number>0</number>
        </property>
@@ -56,6 +62,12 @@
           <enum>QFrame::NoFrame</enum>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_3">
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QListWidget" name="eventList"/>
           </item>
@@ -131,6 +143,12 @@
           <enum>QFrame::NoFrame</enum>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>9</number>
+          </property>
           <item>
            <widget class="QFrame" name="frame_4">
             <property name="frameShape">
@@ -219,10 +237,20 @@
              <property name="bottomMargin">
               <number>4</number>
              </property>
-             <item alignment="Qt::AlignRight|Qt::AlignVCenter">
+             <item alignment="Qt::AlignLeft|Qt::AlignVCenter">
               <widget class="QLabel" name="viewReferLbl">
                <property name="text">
                 <string>Код приглашения</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::MarkdownText</enum>
+               </property>
+              </widget>
+             </item>
+             <item alignment="Qt::AlignRight|Qt::AlignVCenter">
+              <widget class="QLabel" name="viewParticipantsLbl">
+               <property name="text">
+                <string>Участники</string>
                </property>
                <property name="textFormat">
                 <enum>Qt::MarkdownText</enum>

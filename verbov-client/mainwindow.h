@@ -46,6 +46,8 @@ private slots:
 
     void on_enrollByReferLbl_linkActivated(const QString &link);
 
+    void on_viewParticipantsLbl_linkActivated(const QString &link);
+
 private:
     void update_selected_event();
 private:

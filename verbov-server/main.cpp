@@ -421,7 +421,6 @@ static int run_server(QCoreApplication& app) {
                     );
             }
 
-
             Event event;
             event.name = name;
             event.creator_user_id = creator_user_id;
@@ -477,12 +476,9 @@ static int run_server(QCoreApplication& app) {
             // Или владелец, или участник.
 
             QByteArray result;
-            QDataStream stream(result);
+            QDataStream stream(&result, QDataStream::OpenModeFlag::WriteOnly);
             stream << *maybe_event;
-            return QHttpServerResponse(
-                result,
-                QHttpServerResponse::StatusCode::Ok
-                );
+            return QHttpServerResponse(result, QHttpServerResponse::StatusCode::Ok);
         }
 
         case QHttpServerRequest::Method::Patch: {
@@ -520,7 +516,7 @@ static int run_server(QCoreApplication& app) {
                     );
             }
 
-            return QHttpServerResponse("", QHttpServerResponse::StatusCode::Ok);
+            return QHttpServerResponse(QHttpServerResponse::StatusCode::Ok);
         }
 
         default: {
@@ -584,7 +580,7 @@ static int run_server(QCoreApplication& app) {
         }
 
         QByteArray result;
-        QDataStream stream(result);
+        QDataStream stream(&result, QDataStream::OpenModeFlag::WriteOnly);
         stream << *maybe_user;
         return QHttpServerResponse(
             result,
@@ -661,6 +657,62 @@ static int run_server(QCoreApplication& app) {
             QHttpServerResponse::StatusCode::Ok
             );
 
+        return QHttpServerResponse(result);
+    });
+    server.route("/event_get_participants", [&db](const QHttpServerRequest& request) {
+        QString token = request.query().queryItemValue("token");
+
+        std::optional<Session> maybe_session;
+        if (!Session::fetch_by_token(db, token, maybe_session)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (1).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_session.has_value() || maybe_session->is_expired()) {
+            return QHttpServerResponse(
+                "Сессия истекла",
+                QHttpServerResponse::StatusCode::NetworkAuthenticationRequired
+                );
+        }
+
+        bool is_integer = false;
+        qint64 event_id = request.query().queryItemValue("event_id").toULongLong(&is_integer);
+        if (!is_integer) {
+            return QHttpServerResponse(
+                "Недопустимый ID события.",
+                QHttpServerResponse::StatusCode::NotAcceptable
+                );
+        }
+
+        std::optional<Event> maybe_event;
+
+        if (!Event::fetch_by_id(db, event_id, maybe_event)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (2).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        if (!maybe_event.has_value() || maybe_event->creator_user_id != maybe_session->user_id) {
+            return QHttpServerResponse(
+                "Событие не найдено.",
+                QHttpServerResponse::StatusCode::NotFound
+                );
+        }
+
+        QVector<User> users;
+        if (!User::fetch_by_event_id(db, maybe_event->get_id(), users)) {
+            return QHttpServerResponse(
+                "Внутренняя ошибка (3).",
+                QHttpServerResponse::StatusCode::InternalServerError
+                );
+        }
+
+        QByteArray result;
+        QDataStream stream(&result, QDataStream::OpenModeFlag::WriteOnly);
+        stream << users;
         return QHttpServerResponse(result);
     });
     server.route("/event_delete_participant", [&db](const QHttpServerRequest& request) {
@@ -801,7 +853,7 @@ static int run_server(QCoreApplication& app) {
             }
 
             QByteArray result;
-            QDataStream stream(result);
+            QDataStream stream(&result, QDataStream::OpenModeFlag::WriteOnly);
             stream << *maybe_event;
             return QHttpServerResponse(
                 result,
