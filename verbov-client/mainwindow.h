@@ -6,6 +6,7 @@
 #include <QTimer>
 
 #include "DB/event.h"
+#include "DB/user.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -18,7 +19,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QString token, QWidget *parent = nullptr);
+    MainWindow(User user, QString token, QWidget *parent = nullptr);
     ~MainWindow();
 
 private:
@@ -49,6 +50,7 @@ private:
     void update_selected_event();
 private:
     Ui::MainWindow *ui;
+    User user_;
     QString token_;
     std::optional<quint64> selected_event_id;
 

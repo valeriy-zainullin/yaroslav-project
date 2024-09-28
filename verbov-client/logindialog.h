@@ -27,7 +27,7 @@ private slots:
     void on_helpBtn_clicked();
 
 private:
-    void onLoggedIn(QString token);
+    void onLoggedIn(User user, QString token);
 
 private:
     Ui::LoginDialog *ui;

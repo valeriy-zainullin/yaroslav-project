@@ -20,11 +20,28 @@ LoginDialog::LoginDialog(QWidget *parent)
     QFile token_file("token.txt");
     if (token_file.exists()) {
         if (token_file.open(QFile::OpenModeFlag::ReadOnly)) {
-            // TODO: проверять здесь, что сессия с сохранненым токеном не истекла.
-            // TODO: при просроченном токене на любой операции с API предупреждать,
-            // что нужно перезапустить приложение.
-            onLoggedIn(QString(token_file.readAll()).remove('\n').remove('\r'));
-            return;
+            QString token(token_file.readAll());
+            token.remove('\n');
+            token.remove('\r');
+
+            api::Result result = api::request("get_me", {}, {}, token);
+            if (!result.success) {
+                QToolTip::showText(QCursor::pos(), result.content);
+            } else {
+                // TODO: проверять здесь, что сессия с сохранненым токеном не истекла.
+                // TODO: при просроченном токене на любой операции с API предупреждать,
+                // что нужно перезапустить приложение.
+                // TODO: на сервере в каждом типе запросов проверять, что токен валиден
+                // с запасом в пару часов. За пару часов работы, если токен истек, такое
+                // не так страшно, пользователь уже успел поработать.
+
+                QDataStream stream(result.content);
+                User user(0);
+                stream >> user;
+
+                onLoggedIn(std::move(user), std::move(token));
+                return;
+            }
         }
     }
 
@@ -47,8 +64,8 @@ void LoginDialog::on_regBtn_clicked()
     QToolTip::showText(QCursor::pos(), result.content);
 }
 
-void LoginDialog::onLoggedIn(QString token) {
-    mainWnd.emplace(token);
+void LoginDialog::onLoggedIn(User user, QString token) {
+    mainWnd.emplace(std::move(user), std::move(token));
     mainWnd->show();
 
     hide();
@@ -62,14 +79,20 @@ void LoginDialog::on_loginBtn_clicked()
     api::Result result = api::request("login", {"vk_profile", "password"}, {vkProfile, pass});
 
     if (result.success) {
+        QDataStream stream(result.content);
+
+        User user(0);
         QString token(result.content);
+
+        stream >> user;
+        stream >> token;
 
         QFile token_file("token.txt");
         if (token_file.open(QFile::OpenModeFlag::WriteOnly)) {
             token_file.write(token.toUtf8());
         }
 
-        onLoggedIn(token);
+        onLoggedIn(std::move(user), std::move(token));
     } else {
         QToolTip::showText(QCursor::pos(), result.content);
     }
@@ -83,6 +106,4 @@ void LoginDialog::on_helpBtn_clicked()
         "Профиль в формате id1234 или username.\n"
         "Для регистрации введите профиль и нажмите соответствующую кнопку."
         );
-
 }
-

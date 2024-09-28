@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 
 #include <QClipboard>
+#include <QMessageBox>
 #include <QToolTip>
 #include <QListWidgetItem>
 
@@ -9,9 +10,10 @@
 #include "enrolldialog.h"
 #include "EventListItem.h"
 
-MainWindow::MainWindow(QString token, QWidget *parent)
+MainWindow::MainWindow(User user, QString token, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , user_(std::move(user))
     , token_(std::move(token))
 {
     ui->setupUi(this);
@@ -106,7 +108,7 @@ void MainWindow::on_newEventBtn_clicked()
         // А затем планировать уже от времени последнего события.
         // Типо планировать на 00:00 точно редкость, но 8 часов
         // тоже не оптимально, зачастую будут события в середине дня..
-        constexpr auto eight_hours = std::chrono::milliseconds(8 * 60 * 1000);
+        constexpr auto eight_hours = std::chrono::hours(8);
         auto datetime = ui->calendarWidget->selectedDate().startOfDay().addDuration(eight_hours);
 
         qint64 timestamp = datetime.toSecsSinceEpoch();
@@ -270,21 +272,64 @@ void MainWindow::on_deleteEventBtn_clicked()
         return;
     }
 
-    api::Result result = api::request(
-        "event",
-        {"event_id"},
-        {QString::number(*selected_event_id)},
-        token_,
-        api::HttpMethod::Delete
+    Event* found_event = nullptr;
+    for (auto& event: events) {
+        if (event.get_id() == selected_event_id.value()) {
+            found_event = &event;
+            break;
+        }
+    }
+
+    if (found_event == nullptr) {
+        return;
+    }
+
+    if (found_event->creator_user_id == user_.get_vk_id()) {
+        QMessageBox::StandardButton answer = QMessageBox::question(
+            this,
+            "Отмена события",
+            "Вы действительно хотите отменить событие, созданное вами?\n"
+            "Если вы это сделаете, оно пропадет у всех участников."
         );
 
-    if (result.success) {
-        ui->eventList->takeItem(ui->eventList->currentRow());
-        events.erase(std::find_if(events.begin(), events.end(), [this](const auto& event) {
-            return event.get_id() == *selected_event_id;
-        }));
+        if (answer == QMessageBox::StandardButton::No) {
+            return;
+        }
+
+        api::Result result = api::request(
+            "event",
+            {"event_id"},
+            {QString::number(*selected_event_id)},
+            token_,
+            api::HttpMethod::Delete
+            );
+
+        if (result.success) {
+            ui->eventList->takeItem(ui->eventList->currentRow());
+            events.erase(std::find_if(events.begin(), events.end(), [this](const auto& event) {
+                return event.get_id() == *selected_event_id;
+            }));
+        } else {
+            QToolTip::showText(QCursor::pos(), QString(result.content));
+        }
     } else {
-        QToolTip::showText(QCursor::pos(), QString(result.content));
+        api::Result result = api::request(
+            "event_register",
+            {"event_id"},
+            {QString::number(*selected_event_id)},
+            token_,
+            api::HttpMethod::Delete
+            );
+
+        if (result.success) {
+            ui->eventList->takeItem(ui->eventList->currentRow());
+            events.erase(std::find_if(events.begin(), events.end(), [this](const auto& event) {
+                return event.get_id() == *selected_event_id;
+            }));
+        } else {
+            QToolTip::showText(QCursor::pos(), QString(result.content));
+        }
+
     }
 }
 

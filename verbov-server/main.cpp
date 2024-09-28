@@ -354,7 +354,14 @@ static int run_server(QCoreApplication& app) {
                 assert(maybe_session.has_value());
 
                 const QString& token = maybe_session->token;
-                return QHttpServerResponse(token);
+
+                QByteArray result;
+                QDataStream stream(&result, QDataStream::OpenModeFlag::WriteOnly);
+
+                stream << *maybe_user;
+                stream << token;
+
+                return QHttpServerResponse(result);
             }
         }
 
@@ -701,7 +708,7 @@ static int run_server(QCoreApplication& app) {
                 );
         }
 
-        if (!maybe_event.has_value() || maybe_event->creator_user_id == maybe_session->user_id) {
+        if (!maybe_event.has_value() || maybe_event->creator_user_id != maybe_session->user_id) {
             return QHttpServerResponse(
                 "Событие не найдено.",
                 QHttpServerResponse::StatusCode::NotFound
