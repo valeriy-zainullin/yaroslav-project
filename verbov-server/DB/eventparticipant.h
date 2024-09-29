@@ -18,15 +18,6 @@ public:
     // It is used to not send excessive notification. E.g. user registers the day before the event, we shouldn't notify him twice like
     // "hey, it's less than a week" before the event and then "hey, it's less than a day before the event".
     // Also this only works if server is up at least every day, so that notification duties don't pile up.
-
-    // 0 -- never notified
-    // 1 -- notified week before the event (if between event creation and it's occurence there is a week)
-    // 2 -- notified 3 days before the event
-    // 3 -- notified day before the event
-    // 4 -- notified 6 hours before the event
-    // 5 -- notified an hour before the event
-    // 6 -- notified 20 minutes before the event.
-    // quint64 last_notification = 0;
 public:
     static const char table_name[];
 public:

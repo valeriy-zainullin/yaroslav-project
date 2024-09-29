@@ -4,6 +4,7 @@
 #include <QtSql/QSqlDatabase>
 #include <QHttpServer>
 #include <QFile>
+#include <QTimer>
 
 #include "DB/session.h"
 #include "DB/user.h"
@@ -456,6 +457,8 @@ static int run_server(QCoreApplication& app) {
                 );
         }
 
+        QMutexLocker locker(&Event::notification_mutex);
+
         std::optional<Event> maybe_event;
         if (!Event::fetch_by_id(db, event_id, maybe_event)) {
             return QHttpServerResponse(
@@ -495,6 +498,9 @@ static int run_server(QCoreApplication& app) {
                         QHttpServerResponse::StatusCode::NotAcceptable
                         );
                 }
+
+                // Уведомления надо выслать заново.
+                maybe_event->last_notification_level = 0;
             }
             if (!maybe_event->update(db)) {
                 return QHttpServerResponse(
@@ -937,6 +943,13 @@ static int run_server(QCoreApplication& app) {
         qInfo() << "failed to listen on port";
         return -1;
     }
+
+    QTimer notification_timer;
+    notification_timer.setInterval(60 * 1000);
+    notification_timer.connect(&notification_timer, &QTimer::timeout, [&db]() {
+        Event::send_notifications(db);
+    });
+    notification_timer.start();
 
     // Maybe graceful shutdown later..
     qInfo() << "Server is up on 127.0.0.1:8080";

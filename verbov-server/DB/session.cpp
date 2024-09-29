@@ -121,14 +121,18 @@ bool Session::check_table(QSqlDatabase& db) {
     //   https://stackoverflow.com/a/9053277
     // We have to write NOT NULL at PRIMARY KEYS of not integer type for sqlite due to a bug.
     //   https://stackoverflow.com/a/64778551
-    query.prepare(
+    if (!query.prepare(
         "CREATE TABLE IF NOT EXISTS " + table_name + "("
         "id INTEGER                NOT NULL PRIMARY KEY AUTOINCREMENT CHECK(id >= 1),"
         "user_id INTEGER           NOT NULL                           CHECK(user_id >= 1),"
         "token VARCHAR(64)         NOT NULL UNIQUE                    CHECK(LENGTH(token) = 64),"
         "start_time INTEGER(8)     NOT NULL                           CHECK(start_time >= 0),"
         "FOREIGN KEY (user_id) REFERENCES " + User::table_name + "(vk_id) ON DELETE RESTRICT"
-    ");");
+    ");")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -143,7 +147,11 @@ bool Session::fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Session>& 
     Session session;
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + table_name + " WHERE id = :id");
+    if (!query.prepare("SELECT * FROM " + table_name + " WHERE id = :id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {
@@ -175,7 +183,11 @@ bool Session::fetch_by_token(QSqlDatabase& db, const QStringView token, std::opt
     Session session;
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + table_name + " WHERE token = :token");
+    if (!query.prepare("SELECT * FROM " + table_name + " WHERE token = :token")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":token", token.toString());
 
     if (!query.exec()) {
@@ -203,10 +215,14 @@ bool Session::fetch_by_token(QSqlDatabase& db, const QStringView token, std::opt
 bool Session::create(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "INSERT INTO " + table_name + "(user_id, token, start_time)"
                                       " VALUES (:user_id, :token, :start_time)"
-    );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     pack_into_query(query, false);
 
     if (!query.exec()) {
@@ -229,11 +245,15 @@ bool Session::create(QSqlDatabase& db) {
 bool Session::update(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "UPDATE " + table_name + " " +
         "SET user_id = :user_id, token = :token, start_time = :start_time "
         "WHERE id = :id"
-    );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     pack_into_query(query);
 
     if (!query.exec()) {
@@ -248,7 +268,11 @@ bool Session::update(QSqlDatabase& db) {
 bool Session::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare("DELETE FROM " + table_name + " WHERE id = :id");
+    if (!query.prepare("DELETE FROM " + table_name + " WHERE id = :id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":id", QVariant::fromValue(id));
 
     if (!query.exec()) {
@@ -282,7 +306,11 @@ bool Session::generate_token(QSqlDatabase& db) {
         token = hash.result().toHex();
 
         QSqlQuery query(db);
-        query.prepare("SELECT 1 FROM " + table_name + " WHERE token = (:token);");
+        if (!query.prepare("SELECT 1 FROM " + table_name + " WHERE token = (:token);")) {
+            // Failed to execute the query.
+            qCritical() << query.lastError().text();
+            return false;
+        }
         query.bindValue(":token", token);
         if (!query.exec()) {
             // Failed to execute the query.

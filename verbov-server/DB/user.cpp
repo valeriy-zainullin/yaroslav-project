@@ -134,15 +134,19 @@ bool User::check_table(QSqlDatabase& db) {
     //   https://stackoverflow.com/a/9053277
     // We have to write NOT NULL at PRIMARY KEYS of not integer type for sqlite due to a bug.
     //   https://stackoverflow.com/a/64778551
-    query.prepare(
+    if (!query.prepare(
         "CREATE TABLE IF NOT EXISTS " + QString(table_name) + "("
-        "vk_id INTEGER(8)          NOT NULL PRIMARY KEY CHECK(vk_id >= 1),"
-        "first_name VARCHAR(64)    NOT NULL             CHECK(first_name != ''),"
-        "last_name VARCHAR(64)     NOT NULL             CHECK(last_name != ''),"
+        "vk_id         INTEGER     NOT NULL PRIMARY KEY CHECK(vk_id >= 1),"
+        "first_name    VARCHAR(64) NOT NULL             CHECK(first_name != ''),"
+        "last_name     VARCHAR(64) NOT NULL             CHECK(last_name != ''),"
         "reg_confirmed BOOL        NOT NULL,"
-        "reg_code INTEGER          NOT NULL,"
+        "reg_code      INTEGER     NOT NULL             CHECK(reg_code >= 0),"
         "password_hash VARCHAR(64) NOT NULL             CHECK(LENGTH(password_hash) = 64)"
-    ");");
+    ");")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -160,7 +164,11 @@ bool User::fetch_by_vk_id(QSqlDatabase& db, quint64 vk_id, std::optional<User>& 
     User user;
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + QString(table_name) + " WHERE vk_id = :vk_id");
+    if (!query.prepare("SELECT * FROM " + QString(table_name) + " WHERE vk_id = :vk_id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":vk_id", vk_id);
 
     if (!query.exec()) {
@@ -188,10 +196,14 @@ bool User::fetch_by_vk_id(QSqlDatabase& db, quint64 vk_id, std::optional<User>& 
 bool User::fetch_by_event_id(QSqlDatabase& db, quint64 event_id, QVector<User>& found_users) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "SELECT * FROM " + QString(table_name) + " WHERE vk_id IN ("
         "SELECT user_id FROM " + EventParticipant::table_name + " WHERE event_id = :event_id"
-    ")");
+    ")")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":event_id", event_id);
 
     if (!query.exec()) {
@@ -224,10 +236,14 @@ bool User::fetch_by_event_id(QSqlDatabase& db, quint64 event_id, QVector<User>& 
 bool User::create(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "INSERT INTO " + QString(table_name) + "(first_name, last_name, vk_id, reg_confirmed, reg_code, password_hash)"
         " VALUES (:first_name, :last_name, :vk_id, :reg_confirmed, :reg_code, :password_hash)"
-    );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     pack_into_query(query);
 
     if (!query.exec()) {
@@ -243,11 +259,15 @@ bool User::create(QSqlDatabase& db) {
 bool User::update(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "UPDATE " + QString(table_name) + " " +
         "SET first_name = :first_name, last_name = :last_name, vk_id = :vk_id, reg_confirmed = :reg_confirmed, reg_code = :reg_code, password_hash = :password_hash "
         "WHERE vk_id = :vk_id"
-    );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     pack_into_query(query);
 
     if (!query.exec()) {
@@ -262,7 +282,11 @@ bool User::update(QSqlDatabase& db) {
 bool User::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare("DELETE FROM " + QString(table_name) + " WHERE vk_id = :vk_id");
+    if (!query.prepare("DELETE FROM " + QString(table_name) + " WHERE vk_id = :vk_id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":vk_id", QVariant::fromValue(vk_id));
 
     if (!query.exec()) {
@@ -303,4 +327,3 @@ QDataStream& operator>>(QDataStream& in,  User& entry) {
 
     return in;
 }
-

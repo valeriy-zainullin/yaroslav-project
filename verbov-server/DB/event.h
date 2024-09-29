@@ -2,6 +2,7 @@
 #define EVENT_H
 
 #include <QDataStream>
+#include <QMutex>
 #include <QString>
 #include <QStringView>
 
@@ -16,8 +17,18 @@ public:
     quint64 creator_user_id = 0;
     quint64 timestamp; // UTC+0 unix time when the event will happen
     QString refer_str;
+
+    // 0 -- never notified
+    // 1 -- notified week before the event (if between event creation and it's occurence there is a week)
+    // 2 -- notified 3 days before the event
+    // 3 -- notified day before the event
+    // 4 -- notified 6 hours before the event
+    // 5 -- notified an hour before the event
+    // 6 -- notified 20 minutes before the event.
+    quint8 last_notification_level = 0;
 public:
     static const QString table_name;
+    static QMutex notification_mutex;
 public:
     bool unpack_from_query(QSqlQuery& query);
     void pack_into_query(QSqlQuery& query, bool fill_id = true) const;
@@ -30,6 +41,10 @@ public:
     static bool fetch_by_id(QSqlDatabase& db, quint64 id, std::optional<Event>& found_event);
     static bool fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVector<Event>& found_events);
     static bool fetch_by_refer(QSqlDatabase& db, const QString& refer_str, std::optional<Event>& found_event);
+
+    static void send_notifications(QSqlDatabase& db);
+private:
+    static void send_notifications_of_level(QSqlDatabase& db, quint64 now, int level);
 public:
     // Public plain methods.
 

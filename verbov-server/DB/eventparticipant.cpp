@@ -62,7 +62,7 @@ bool EventParticipant::check_table(QSqlDatabase& db) {
     //   https://stackoverflow.com/a/9053277
     // We have to write NOT NULL at PRIMARY KEYS of not integer type for sqlite due to a bug.
     //   https://stackoverflow.com/a/64778551
-    query.prepare(
+    if (!query.prepare(
         "CREATE TABLE IF NOT EXISTS " + QString(table_name) + "("
             "event_id        INTEGER    NOT NULL                           CHECK(event_id >= 1),"
             "user_id         INTEGER    NOT NULL                           CHECK(user_id >= 1),"
@@ -70,7 +70,11 @@ bool EventParticipant::check_table(QSqlDatabase& db) {
             "PRIMARY KEY (event_id, user_id),"
             "FOREIGN KEY (event_id) REFERENCES " + QString(Event::table_name) + "(id) ON DELETE CASCADE,"
             "FOREIGN KEY (user_id) REFERENCES "  + QString(User::table_name)  + "(vk_id) ON DELETE RESTRICT"
-    ");");
+    ");")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
 
     if (!query.exec()) {
         // Failed to execute the query.
@@ -84,7 +88,11 @@ bool EventParticipant::check_table(QSqlDatabase& db) {
 bool EventParticipant::fetch(QSqlDatabase& db, quint64 event_id, quint64 user_id, std::optional<EventParticipant>& found_participation) {
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + QString(table_name) + " WHERE event_id = :event_id AND user_id = :user_id");
+    if (!query.prepare("SELECT * FROM " + QString(table_name) + " WHERE event_id = :event_id AND user_id = :user_id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":event_id", QVariant::fromValue(event_id));
     query.bindValue(":user_id", QVariant::fromValue(user_id));
 
@@ -115,7 +123,11 @@ bool EventParticipant::fetch(QSqlDatabase& db, quint64 event_id, quint64 user_id
 bool EventParticipant::fetch_all_for_event(QSqlDatabase& db, quint64 event_id, QVector<EventParticipant>& found_participations) {
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + QString(table_name) + " WHERE event_id = :event_id");
+    if (!query.prepare("SELECT * FROM " + QString(table_name) + " WHERE event_id = :event_id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":event_id", QVariant::fromValue(event_id));
 
     if (!query.exec()) {
@@ -145,7 +157,11 @@ bool EventParticipant::fetch_all_for_event(QSqlDatabase& db, quint64 event_id, Q
 bool EventParticipant::fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVector<EventParticipant>& found_participations) {
     QSqlQuery query(db);
 
-    query.prepare("SELECT * FROM " + QString(table_name) + " WHERE user_id = :user_id");
+    if (!query.prepare("SELECT * FROM " + QString(table_name) + " WHERE user_id = :user_id")) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":user_id", QVariant::fromValue(user_id));
 
     if (!query.exec()) {
@@ -175,10 +191,14 @@ bool EventParticipant::fetch_all_for_user(QSqlDatabase& db, quint64 user_id, QVe
 bool EventParticipant::create(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "INSERT INTO " + QString(table_name) + "(event_id, user_id, registered_time)"
         " VALUES (:event_id, :user_id, :registered_time)"
-        );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     pack_into_query(query);
 
     if (!query.exec()) {
@@ -197,11 +217,15 @@ bool EventParticipant::update(QSqlDatabase& db) {
     //   только обновлять. Чтобы над разными полями можно было
     //   работать параллельно. Или, например, добавлять участников
     //   события параллельно, т.к. это вставка в базу данных участников.
-    query.prepare(
+    if (!query.prepare(
         "UPDATE " + QString(table_name) + " "
         "SET registered_time = :registered_time "
         "WHERE event_id = :event_id AND user_id = :user_id"
-        );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     pack_into_query(query);
 
     if (!query.exec()) {
@@ -216,10 +240,14 @@ bool EventParticipant::update(QSqlDatabase& db) {
 bool EventParticipant::drop(QSqlDatabase& db) {
     QSqlQuery query(db);
 
-    query.prepare(
+    if (!query.prepare(
         "DELETE FROM " + QString(table_name) + " "
         "WHERE event_id = :event_id AND user_id = :user_id"
-    );
+    )) {
+        // Failed to execute the query.
+        qCritical() << query.lastError().text();
+        return false;
+    }
     query.bindValue(":event_id", QVariant::fromValue(event_id));
     query.bindValue(":user_id", QVariant::fromValue(user_id));
 
